@@ -35,6 +35,6 @@ management:
       show-details: always
 
 server:
-  port: 8081
+  port: 3001
   servlet:
     context-path: /ozzu
