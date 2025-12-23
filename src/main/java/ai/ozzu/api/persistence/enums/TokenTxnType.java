@@ -1,0 +1,7 @@
+package ai.ozzu.api.persistence.enums;
+
+public enum TokenTxnType {
+    AIRDROP, REFERRAL_BONUS, WATCH_SHORT, SPOTLIGHT,
+    LIFELINE, WAGER_CREATE, LOUNGE_WATCH,
+    WAGER_PAYOUT, WAGER_ENTRY_FEE, ADJUSTMENT
+}

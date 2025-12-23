@@ -1,0 +1,13 @@
+Domain-Sport
+Series-Tournament
+Event-Match
+ConceptTerm-Question type
+ScopedReferent-Allowed answers
+EventParticipant-Who’s actually playing
+WagerCardType-Card template
+WagerCardTypeBinding-What the card expects
+Wager-User’s slip
+WagerCard-One prediction
+WagerCardBinding-User’s actual pick
+Lounge-Brand/community
+EventLounge-Lounge hosting a match

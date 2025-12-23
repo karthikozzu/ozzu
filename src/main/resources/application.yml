@@ -1,0 +1,40 @@
+spring:
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: none
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+          batch_size: 50
+          batch_versioned_data: true
+        order_inserts: true
+        order_updates: true
+        default_batch_fetch_size: 100
+        generate_statistics: false
+        query:
+          in_clause_parameter_padding: true
+app:
+  db:
+    write-pool-size-hint: 30
+    read-pool-size-hint: 30
+  # optional: show slow queries via datasource-proxy later; keep off for prod
+logging:
+  level:
+    org.hibernate.SQL: warn
+    org.hibernate.orm.jdbc.bind: warn
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,mappings
+  endpoint:
+    health:
+      show-details: always
+
+server:
+  port: 8081
+  servlet:
+    context-path: /ozzu

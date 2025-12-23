@@ -1,0 +1,215 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="AutoImportSettings">
+    <option name="autoReloadType" value="SELECTIVE" />
+  </component>
+  <component name="ChangeListManager">
+    <list default="true" id="7e4d98bc-5cdc-4c99-8099-a19e10a9930c" name="Changes" comment="">
+      <change afterPath="$PROJECT_DIR$/.gitignore" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/dataSources.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/encodings.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/jpa-buddy.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/sqldialects.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/vcs.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/pom.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/Application.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/config/ClockConfig.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/config/DbProperties.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/config/JacksonConfig.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/config/JpaTuningConfig.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/controller/UsersController.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/persistence/base/AuditedEntity.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/persistence/base/BaseEntity.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/persistence/entity/ArtifactEntity.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/persistence/entity/ArtifactViewEntity.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/persistence/entity/ConceptTermEntity.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/persistence/entity/DomainEntity.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/persistence/entity/EventEntity.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/persistence/entity/EventLoungeEntity.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/persistence/entity/EventParticipantEntity.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/persistence/entity/EventScoreEntity.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/persistence/entity/LoungeEntity.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/persistence/entity/LoungeEntryEntity.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/persistence/entity/LoungeMembershipEntity.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/persistence/entity/LoungeNotificationEntity.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/persistence/entity/PlayerEntity.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/persistence/entity/RelationshipEntity.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/persistence/entity/RewardCampaignEntity.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/persistence/entity/RewardClaimEntity.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/persistence/entity/ScopedReferentEntity.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/persistence/entity/SeriesEntity.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/persistence/entity/TeamEntity.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/persistence/entity/TeamMemberEntity.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/persistence/entity/TokenLedgerEntity.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/persistence/entity/UserEntity.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/persistence/entity/UserSessionEntity.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/persistence/entity/ViewUserTokenBalanceEntity.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/persistence/entity/WagerCardBindingEntity.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/persistence/entity/WagerCardEntity.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/persistence/entity/WagerCardTypeBindingEntity.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/persistence/entity/WagerCardTypeEntity.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/persistence/entity/WagerEntity.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/persistence/entity/WagerId.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/persistence/entity/WagerInLoungeEntity.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/persistence/enums/ArtifactType.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/persistence/enums/AuthProvider.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/persistence/enums/EventStatus.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/persistence/enums/LoungeMemberRole.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/persistence/enums/LoungeMemberStatus.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/persistence/enums/LoungeNotificationType.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/persistence/enums/RewardTriggerType.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/persistence/enums/TokenTxnType.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/persistence/enums/WagerOutcome.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/persistence/enums/WagerStateEventEntity.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/persistence/enums/WagerStatus.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/persistence/repo/ArtifactRepository.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/persistence/repo/ArtifactViewRepository.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/persistence/repo/ConceptTermRepository.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/persistence/repo/DomainRepository.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/persistence/repo/EventLoungeRepository.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/persistence/repo/EventParticipantRepository.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/persistence/repo/EventRepository.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/persistence/repo/EventScoreRepository.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/persistence/repo/LoungeEntryRepository.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/persistence/repo/LoungeMembershipRepository.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/persistence/repo/LoungeNotificationRepository.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/persistence/repo/LoungeRepository.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/persistence/repo/PlayerRepository.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/persistence/repo/RelationshipRepository.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/persistence/repo/RewardCampaignRepository.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/persistence/repo/RewardClaimRepository.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/persistence/repo/ScopedReferentRepository.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/persistence/repo/SeriesRepository.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/persistence/repo/TeamMemberRepository.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/persistence/repo/TeamRepository.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/persistence/repo/TokenLedgerRepository.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/persistence/repo/UserRepository.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/persistence/repo/UserSessionRepository.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/persistence/repo/ViewUserTokenBalanceRepository.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/persistence/repo/WagerCardBindingRepository.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/persistence/repo/WagerCardRepository.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/persistence/repo/WagerCardTypeBindingRepository.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/persistence/repo/WagerCardTypeRepository.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/persistence/repo/WagerInLoungeRepository.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/persistence/repo/WagerRepository.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/persistence/repo/WagerStateEventRepository.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/service/WagerStatusService.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/resources/META-INF/maven/archetype.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/resources/application-dev.yml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/resources/application.yml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/resources/archetype-resources/pom.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/resources/archetype-resources/src/main/java/App.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/resources/archetype-resources/src/test/java/AppTest.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/resources/db/dm.sql" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/resources/db/seed_v1.sql" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/resources/metamodel.txt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/resources/openapi/ozzu_api.yaml" afterDir="false" />
+    </list>
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="FileTemplateManagerImpl">
+    <option name="RECENT_TEMPLATES">
+      <list>
+        <option value="Enum" />
+        <option value="Class" />
+      </list>
+    </option>
+  </component>
+  <component name="Git.Settings">
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+  </component>
+  <component name="JpbToolWindowState">
+    <option name="isToolWindowVisible" value="false" />
+  </component>
+  <component name="MarkdownSettingsMigration">
+    <option name="stateVersion" value="1" />
+  </component>
+  <component name="ProjectColorInfo">{
+  &quot;associatedIndex&quot;: 4
+}</component>
+  <component name="ProjectId" id="37EyhlRgyZq47ZZp8jg5K4C2D1I" />
+  <component name="ProjectLevelVcsManager" settingsEditedManually="true" />
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "Maven. [org.apache.maven.plugins:maven-archetype-plugin:RELEASE:generate].executor": "Run",
+    "RunOnceActivity.OpenProjectViewOnStart": "true",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "SHARE_PROJECT_CONFIGURATION_FILES": "true",
+    "Spring Boot.Application.executor": "Run",
+    "git-widget-placeholder": "master",
+    "kotlin-language-version-configured": "true",
+    "last_opened_file_path": "/Users/karthik/IdeaProjects/ozzu/src/main/java/ai/ozzu/api/persistence/repo",
+    "node.js.detected.package.eslint": "true",
+    "node.js.detected.package.tslint": "true",
+    "node.js.selected.package.eslint": "(autodetect)",
+    "node.js.selected.package.tslint": "(autodetect)",
+    "nodejs_package_manager_path": "npm",
+    "project.structure.last.edited": "Project",
+    "project.structure.proportion": "0.15",
+    "project.structure.side.proportion": "0.29655173",
+    "settings.editor.selected.configurable": "reference.settings.project.maven.repository.indices",
+    "vue.rearranger.settings.migration": "true"
+  },
+  "keyToStringList": {
+    "DatabaseDriversLRU": [
+      "postgresql"
+    ],
+    "com.intellij.ide.scratch.LRUPopupBuilder$1/": [
+      "PostgreSQL"
+    ]
+  }
+}]]></component>
+  <component name="RecentsManager">
+    <key name="CopyFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$/src/main/java/ai/ozzu/api/persistence/repo" />
+      <recent name="$PROJECT_DIR$/src/main/resources/openapi" />
+      <recent name="$PROJECT_DIR$/src/main/resources" />
+    </key>
+    <key name="MoveFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$/src/main/resources/db" />
+      <recent name="$PROJECT_DIR$/src/main/java" />
+    </key>
+    <key name="MoveClassesOrPackagesDialog.RECENTS_KEY">
+      <recent name="ai.ozzu.api" />
+    </key>
+  </component>
+  <component name="RunManager">
+    <configuration name="Application" type="SpringBootApplicationConfigurationType" factoryName="Spring Boot" nameIsGenerated="true">
+      <option name="ACTIVE_PROFILES" value="dev" />
+      <option name="ALTERNATIVE_JRE_PATH" value="21" />
+      <option name="ALTERNATIVE_JRE_PATH_ENABLED" value="true" />
+      <module name="ozzu" />
+      <option name="SPRING_BOOT_MAIN_CLASS" value="ai.ozzu.api.Application" />
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
+    </configuration>
+  </component>
+  <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="application-level" UseSingleDictionary="true" transferred="true" />
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="Default task">
+      <changelist id="7e4d98bc-5cdc-4c99-8099-a19e10a9930c" name="Changes" comment="" />
+      <created>1766482647364</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1766482647364</updated>
+      <workItem from="1766482648928" duration="4969000" />
+      <workItem from="1766488443840" duration="3919000" />
+      <workItem from="1766492664737" duration="930000" />
+      <workItem from="1766493602551" duration="2194000" />
+    </task>
+    <servers />
+  </component>
+  <component name="TypeScriptGeneratedFilesManager">
+    <option name="version" value="3" />
+  </component>
+</project>
