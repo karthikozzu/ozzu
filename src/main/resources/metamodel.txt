@@ -11,3 +11,5 @@ WagerCard-One prediction
 WagerCardBinding-User’s actual pick
 Lounge-Brand/community
 EventLounge-Lounge hosting a match
+
+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
