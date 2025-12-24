@@ -733,6 +733,13 @@ CREATE TABLE IF NOT EXISTS lounge_notifications (
 CREATE INDEX IF NOT EXISTS ix_lounge_notifications_lounge_time
     ON lounge_notifications(lounge_id, created_at DESC);
 
+ALTER TABLE wager_card_bindings
+    ADD COLUMN IF NOT EXISTS concept_term_id uuid;
+
+ALTER TABLE wager_card_bindings
+    ADD CONSTRAINT fk_wcb_concept_term
+        FOREIGN KEY (concept_term_id) REFERENCES concept_terms(id) ON DELETE RESTRICT;
+
 -- =========================================================
 -- TRIGGERS / FUNCTIONS
 -- =========================================================
@@ -802,14 +809,13 @@ BEGIN
     INTO v_wctb_concept_term_id
     FROM wager_card_type_bindings wctb
     WHERE wctb.id = NEW.wager_card_type_binding_id;
-
     IF v_wctb_concept_term_id IS NULL THEN
         RAISE EXCEPTION
             'Invalid wager_card_type_binding_id %, cannot resolve concept_term_id',
             NEW.wager_card_type_binding_id
             USING ERRCODE = '23503';
     END IF;
-
+    NEW.concept_term_id := v_wctb_concept_term_id;
     IF NEW.scoped_referent_id IS NOT NULL THEN
         SELECT sr.event_id, sr.concept_term_id
         INTO v_sr_event_id, v_sr_concept_term_id
@@ -864,6 +870,47 @@ BEGIN
 
     RETURN NEW;
 END$$;
+
+CREATE OR REPLACE FUNCTION trg_event_participants_validate_entity_domain()
+    RETURNS trigger LANGUAGE plpgsql AS $$
+DECLARE
+    v_event_domain uuid;
+    v_team_domain uuid;
+    v_player_domain uuid;
+BEGIN
+    SELECT domain_id INTO v_event_domain FROM events WHERE id = NEW.event_id;
+    IF v_event_domain IS NULL THEN
+        RAISE EXCEPTION 'Invalid event_id %', NEW.event_id USING ERRCODE='23503';
+    END IF;
+
+    IF NEW.team_id IS NOT NULL THEN
+        SELECT domain_id INTO v_team_domain FROM teams WHERE id = NEW.team_id;
+        IF v_team_domain IS NULL THEN
+            RAISE EXCEPTION 'Invalid team_id %', NEW.team_id USING ERRCODE='23503';
+        END IF;
+        IF v_team_domain <> v_event_domain THEN
+            RAISE EXCEPTION 'Team domain_id % != event domain_id %', v_team_domain, v_event_domain USING ERRCODE='23514';
+        END IF;
+    END IF;
+
+    IF NEW.player_id IS NOT NULL THEN
+        SELECT domain_id INTO v_player_domain FROM players WHERE id = NEW.player_id;
+        IF v_player_domain IS NULL THEN
+            RAISE EXCEPTION 'Invalid player_id %', NEW.player_id USING ERRCODE='23503';
+        END IF;
+        IF v_player_domain <> v_event_domain THEN
+            RAISE EXCEPTION 'Player domain_id % != event domain_id %', v_player_domain, v_event_domain USING ERRCODE='23514';
+        END IF;
+    END IF;
+
+    RETURN NEW;
+END $$;
+
+DROP TRIGGER IF EXISTS tr_event_participants_validate_entity_domain ON event_participants;
+CREATE TRIGGER tr_event_participants_validate_entity_domain
+    BEFORE INSERT OR UPDATE OF event_id, team_id, player_id
+    ON event_participants
+    FOR EACH ROW EXECUTE FUNCTION trg_event_participants_validate_entity_domain();
 
 DROP TRIGGER IF EXISTS tr_wager_card_bindings_validate ON wager_card_bindings;
 CREATE TRIGGER tr_wager_card_bindings_validate
@@ -1329,87 +1376,3 @@ CREATE TRIGGER tr_auto_join_user_to_default_lounges
     ON users
     FOR EACH ROW
 EXECUTE FUNCTION trg_auto_join_user_to_default_lounges();
-
--- =========================================================
--- SEED DATA (idempotent without relying on partial indexes)
--- =========================================================
-
--- Domain: Cricket
-INSERT INTO domains (id, name, description, internal_properties, created_at, updated_at)
-VALUES (
-           gen_random_uuid(),
-           'Cricket',
-           'Cricket domain (matches, players, wagers)',
-           jsonb_build_object('seedVersion','v1','sport','cricket'),
-           now(),
-           now()
-       )
-ON CONFLICT (name) DO NOTHING;
-
--- System user (avoid ON CONFLICT due to partial unique index)
-INSERT INTO users (id, display_name, provider, provider_user_id, created_at, updated_at)
-SELECT gen_random_uuid(), 'Ozzu System', 'EMAIL', 'ozzu_system', now(), now()
-WHERE NOT EXISTS (
-    SELECT 1 FROM users
-    WHERE provider = 'EMAIL' AND provider_user_id = 'ozzu_system'
-);
-
--- Default lounge for Cricket domain
-WITH d AS (
-    SELECT id AS domain_id FROM domains WHERE name = 'Cricket' LIMIT 1
-),
-     u AS (
-         SELECT id AS user_id FROM users WHERE provider = 'EMAIL' AND provider_user_id = 'ozzu_system' LIMIT 1
-     )
-INSERT INTO lounges (
-    id, domain_id, name, description, owner_user_id, internal_properties, created_at, updated_at
-)
-SELECT
-    gen_random_uuid(),
-    d.domain_id,
-    'Ozzu Lounge',
-    'Official Ozzu community lounge (default)',
-    u.user_id,
-    jsonb_build_object(
-            'isDefault', true,
-            'autoJoin', true,
-            'systemLounge', true,
-            'showLeaderboards', true,
-            'showOtherUsersScores', false,
-            'seedVersion','v1'
-    ),
-    now(),
-    now()
-FROM d, u
-ON CONFLICT (domain_id, name) DO NOTHING;
-
--- Make system user OWNER + ACTIVE in Ozzu Lounge
-WITH l AS (
-    SELECT id AS lounge_id
-    FROM lounges
-    WHERE name = 'Ozzu Lounge'
-    ORDER BY created_at ASC
-    LIMIT 1
-),
-     u AS (
-         SELECT id AS user_id
-         FROM users
-         WHERE provider = 'EMAIL' AND provider_user_id = 'ozzu_system'
-         LIMIT 1
-     )
-INSERT INTO lounge_memberships (
-    id, lounge_id, user_id, role, status, invited_by_user_id, joined_at, internal_properties, created_at, updated_at
-)
-SELECT
-    gen_random_uuid(),
-    l.lounge_id,
-    u.user_id,
-    'OWNER',
-    'ACTIVE',
-    NULL,
-    now(),
-    jsonb_build_object('seedVersion','v1'),
-    now(),
-    now()
-FROM l, u
-ON CONFLICT (lounge_id, user_id) DO NOTHING;
