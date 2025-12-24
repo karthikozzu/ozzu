@@ -14,3 +14,12 @@ spring:
       keepalive-time: 300000         # 5 min (helps NAT/LB)
       leak-detection-threshold: 0    # set to 10000 temporarily when debugging
       auto-commit: false
+
+app:
+  jwt:
+    secret: "ozzu_dev_login_secret_shuqvtr3m2l69t0verkbpk98q44v02qv"
+    issuer: "ozzu"
+    ttlMinutes: 120
+
+google:
+  clientId: "129977490269-shuqvtr3m2l69t0verkbpk98q44v02qv.apps.googleusercontent.com"

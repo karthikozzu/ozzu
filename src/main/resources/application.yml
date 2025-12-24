@@ -36,5 +36,3 @@ management:
 
 server:
   port: 3001
-  servlet:
-    context-path: /ozzu

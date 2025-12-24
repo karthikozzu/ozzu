@@ -36,9 +36,27 @@ tags:
   - name: Tokens
 
 security:
-  - SessionAuth: []
+  - BearerAuth: []
 
 paths:
+  /ozzu/users/actions/googleLogin:
+    post:
+      tags: [ Users, Sessions ]
+      summary: Google login (register-if-needed) -> returns Ozzu JWT
+      security: [ ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GoogleLoginRequest"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
   /ozzu/users:
     post:
       tags: [Users]
@@ -622,10 +640,10 @@ paths:
 
 components:
   securitySchemes:
-    SessionAuth:
-      type: apiKey
-      in: header
-      name: X-Session-Id
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
 
   parameters:
     DomainId:
@@ -701,6 +719,33 @@ components:
     AuthProvider:
       type: string
       enum: [EMAIL, GOOGLE, APPLE, FACEBOOK]
+
+    GoogleLoginRequest:
+      type: object
+      required: [ idToken ]
+      properties:
+        idToken:
+          type: string
+          description: Google ID token (JWT) from Web/Android
+        referralCode:
+          type: string
+          description: Optional referral code (applied only on first-time user creation)
+        internalProperties:
+          $ref: "#/components/schemas/InternalProperties"
+
+    AuthResponse:
+      type: object
+      required: [ accessToken, tokenType, expiresInSeconds ]
+      properties:
+        accessToken:
+          type: string
+          description: Ozzu JWT
+        tokenType:
+          type: string
+          example: Bearer
+        expiresInSeconds:
+          type: integer
+          example: 7200
 
     UserRegistrationRequest:
       type: object
