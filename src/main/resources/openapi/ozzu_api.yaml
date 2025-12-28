@@ -364,15 +364,15 @@ paths:
       summary: Get my wagers (active and past) for domain
       parameters:
         - $ref: "#/components/parameters/DomainId"
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/Cursor"
       responses:
         "200":
-          description: Wager list
+          description: Wager list with pagination
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/Wager"
+                $ref: "#/components/schemas/WagerListResponse"
 
   /ozzu/domains/{domainId}/wagerCards:
     post:
@@ -666,6 +666,23 @@ components:
       bearerFormat: JWT
 
   parameters:
+    Limit:
+      name: limit
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+      description: Maximum items to return
+
+    Cursor:
+      name: cursor
+      in: query
+      schema:
+        type: string
+      description: Opaque cursor for pagination
+
     DomainId:
       name: domainId
       in: path
@@ -1250,6 +1267,7 @@ components:
         status: { $ref: "#/components/schemas/WagerStatus" }
         isCelebrity: { type: boolean, default: false }
         celebrityLabel: { type: string }
+        outcome: {type: string}
         stakeTokens: { type: integer }
         payoutTokens: { type: integer }
         narrative:
@@ -1519,3 +1537,17 @@ components:
         balanceTokens: { type: integer }
         internalProperties:
           $ref: "#/components/schemas/InternalProperties"
+
+    WagerListResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Wager"
+        nextCursor:
+          type: string
+          nullable: true
+          description: Cursor for next page (omit or null if none)
+        hasMore:
+          type: boolean

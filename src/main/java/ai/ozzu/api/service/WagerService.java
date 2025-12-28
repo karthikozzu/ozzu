@@ -7,9 +7,12 @@ import ai.ozzu.api.generated.model.WagerNarrativeDetail;
 import ai.ozzu.api.generated.model.WagerReferentBindingRequest;
 import ai.ozzu.api.persistence.entity.*;
 import ai.ozzu.api.persistence.repo.*;
+import ai.ozzu.api.utils.CursorHelper;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -18,8 +21,10 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 public class WagerService {
@@ -217,6 +222,18 @@ public class WagerService {
                 .payoutTokens(w.getPayoutTokens());
     }
 
+    private Wager toApiModel(WagerEntity w) {
+        return new Wager()
+                .id(w.getId())
+                .domainId(w.getDomainId())
+                .eventId(w.getEventId())
+                .userId(w.getUserId())
+                .name(w.getName())
+                .stakeTokens(w.getStakeTokens())
+                .payoutTokens(w.getPayoutTokens())
+                .outcome(w.getOutcome() != null ? w.getOutcome().name() : null);
+    }
+
     private void lockOddsFromPayload(WagerCardBindingEntity b, Map<String, Object> payload) {
         BigDecimal dec = extractDecimal(payload,
                 "lockedDecimalOdds", "decimalOdds", "oddsDecimal", "decimal_odds", "decimal");
@@ -270,5 +287,51 @@ public class WagerService {
             if (!s.isBlank()) return s;
         }
         return null;
+    }
+
+    public record PageResult<T>(
+            List<T> items,
+            String nextCursor,
+            boolean hasMore
+    ) {}
+
+    public PageResult<Wager> getWagersPaginated(
+            UUID domainId,
+            Integer limit,
+            String cursor
+    ) {
+        Pageable pageable = PageRequest.of(0, limit);
+
+        List<WagerEntity> entityPage;
+
+        if (cursor != null) {
+            var decoded = CursorHelper.decode(cursor);
+            entityPage = wagerRepo.findByDomainIdAfterCursor(
+                    domainId,
+                    decoded.getFirst(),
+                    decoded.getSecond(),
+                    pageable
+            );
+        } else {
+            entityPage = wagerRepo.findByDomainIdOrderByCreatedAtDesc(domainId, pageable);
+        }
+
+        // If we got one more than limit => hasMore
+        boolean hasMore = entityPage.size() > limit;
+        if (hasMore) {
+            entityPage = entityPage.subList(0, limit);
+        }
+
+        List<Wager> items = entityPage.stream()
+                .map(this::toApiModel)
+                .collect(Collectors.toList());
+
+        String nextCursor = null;
+        if (hasMore) {
+            WagerEntity last = entityPage.get(entityPage.size() - 1);
+            nextCursor = CursorHelper.encode(last.getCreatedAt(), last.getId());
+        }
+
+        return new PageResult<>(items, nextCursor, hasMore);
     }
 }

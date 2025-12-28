@@ -3,12 +3,12 @@ package ai.ozzu.api.controller;
 import ai.ozzu.api.generated.api.WagersApi;
 import ai.ozzu.api.generated.model.Wager;
 import ai.ozzu.api.generated.model.WagerCreateRequest;
+import ai.ozzu.api.generated.model.WagerListResponse;
 import ai.ozzu.api.service.WagerService;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -23,8 +23,20 @@ public class WagersController implements WagersApi {
     }
 
     @Override
-    public ResponseEntity<List<Wager>> ozzuDomainsDomainIdActionsGetWagersGet(UUID domainId) {
-        return ResponseEntity.ok(List.of());
+    public ResponseEntity<WagerListResponse> ozzuDomainsDomainIdActionsGetWagersGet(UUID domainId,
+                                                                              Integer limit,
+                                                                              String cursor) {
+        // default guard
+        int pageSize = (limit == null || limit <= 0) ? 20 : Math.min(limit, 100);
+
+        var page = wagerService.getWagersPaginated(domainId, pageSize, cursor);
+
+        WagerListResponse resp = new WagerListResponse()
+                .items(page.items())
+                .nextCursor(page.nextCursor())
+                .hasMore(page.hasMore());
+
+        return ResponseEntity.ok(resp);
     }
 
     @Override
