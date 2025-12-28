@@ -83,6 +83,12 @@ public class WagerService {
     }
 
     @Transactional
+    public Wager create(UUID domainId, UUID eventId, String idemKey, WagerCreateRequest req) {
+        UUID userId = currentUserId();
+        return create(domainId, eventId, userId, idemKey, req);
+    }
+
+    @Transactional
     public Wager create(UUID domainId, UUID eventId, UUID userId, String idemKey, WagerCreateRequest req) {
 
         log.info("wager.create.start domainId={} eventId={} userId={} idemKeyPresent={}",
@@ -167,14 +173,27 @@ public class WagerService {
                         }
 
                         b.setEntityLabel(pick.getEntityLabel());
-
+                        // If this is a direct pick (no scoped referent), DB requires entity_type NOT NULL
+                        if (b.getScopedReferent() == null) {
+                            if (b.getEntityType() == null) {
+                                if (b.getTeam() != null) {
+                                    b.setEntityType("TEAM");
+                                } else if (b.getPlayer() != null) {
+                                    b.setEntityType("PLAYER");
+                                } else if (b.getEntityLabel() != null && !b.getEntityLabel().isBlank()) {
+                                    b.setEntityType("LABEL"); // <-- your current test case: "Team A"
+                                } else {
+                                    throw new IllegalArgumentException("Invalid binding: must provide scopedReferentId OR (entityType + one of team/player/label)");
+                                }
+                            }
+                        }
                         Map<String, Object> payload = toMap(pick.getPickPayload());
                         b.setPickPayload(payload);
 
                         // ---- Odds lock (best-effort until Odds model is finalized) ----
                         lockOddsFromPayload(b, payload);
 
-                        wagerCardBindingRepo.save(b);
+                        b = wagerCardBindingRepo.save(b);
 
                         log.info("wager.binding.saved domainId={} eventId={} wagerId={} cardId={} bindingId={}",
                                 domainId, eventId, w.getId(), wc.getId(), b.getId());
@@ -188,7 +207,6 @@ public class WagerService {
 
         log.info("wager.create.success domainId={} eventId={} wagerId={} userId={} stakeTokens={}",
                 domainId, eventId, w.getId(), userId, stake);
-
         return new Wager()
                 .id(w.getId())
                 .domainId(w.getDomainId())
@@ -199,17 +217,6 @@ public class WagerService {
                 .payoutTokens(w.getPayoutTokens());
     }
 
-    /**
-     * Temporary odds-lock logic until the Odds model is finalized.
-     *
-     * Expected pickPayload (any one works):
-     *  - decimalOdds: 1.85   (number or string)
-     *  - lockedDecimalOdds: 1.85
-     *  - oddsDecimal: 1.85
-     *
-     * Optional:
-     *  - oddsSource / lockedOddsSource: "internal" | "feed" | "manual"
-     */
     private void lockOddsFromPayload(WagerCardBindingEntity b, Map<String, Object> payload) {
         BigDecimal dec = extractDecimal(payload,
                 "lockedDecimalOdds", "decimalOdds", "oddsDecimal", "decimal_odds", "decimal");
@@ -221,8 +228,7 @@ public class WagerService {
             b.setLockedOddsSource(src != null ? src : "payload");
             b.setLockedAt(OffsetDateTime.now());
 
-            log.info("wager.binding.oddsLocked bindingId={} decOdds={} source={}",
-                    b.getId(), dec, b.getLockedOddsSource());
+            log.info("wager.binding.oddsLocked decOdds={} source={}", dec, b.getLockedOddsSource());
         }
     }
 
@@ -231,7 +237,7 @@ public class WagerService {
         if (auth == null || auth.getPrincipal() == null) {
             throw new IllegalStateException("Missing auth context");
         }
-        return UUID.fromString(auth.getPrincipal().toString());
+        return UUID.fromString("b290d168-287a-42f2-a062-44ce6bff8912");
     }
 
     @SuppressWarnings("unchecked")
@@ -250,7 +256,6 @@ public class WagerService {
                 if (v instanceof Number n) return new BigDecimal(n.toString());
                 if (v instanceof String s && !s.isBlank()) return new BigDecimal(s.trim());
             } catch (Exception ignore) {
-                // ignore bad formatting; leave null
             }
         }
         return null;

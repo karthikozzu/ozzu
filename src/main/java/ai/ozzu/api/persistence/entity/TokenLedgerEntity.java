@@ -55,6 +55,7 @@ public class TokenLedgerEntity {
     private EventLoungeEntity eventLounge;
 
     @Enumerated(EnumType.STRING)
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     @Column(name="txn_type", nullable=false)
     private TokenTxnType txnType;
 

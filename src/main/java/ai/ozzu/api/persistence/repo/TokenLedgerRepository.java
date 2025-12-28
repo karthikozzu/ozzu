@@ -4,6 +4,7 @@ import ai.ozzu.api.persistence.entity.TokenLedgerEntity;
 import ai.ozzu.api.persistence.enums.TokenTxnType;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 import java.util.Optional;
@@ -20,5 +21,5 @@ public interface TokenLedgerRepository extends JpaRepository<TokenLedgerEntity, 
   );
 
   @Query("select coalesce(sum(t.amount), 0) from TokenLedgerEntity t where t.user.id = :userId")
-  long getBalance(UUID userId);
+  long getBalance(@Param("userId") UUID userId);
 }

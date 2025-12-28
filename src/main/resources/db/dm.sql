@@ -1405,3 +1405,5 @@ ALTER TABLE wager_card_bindings
     ADD COLUMN IF NOT EXISTS locked_decimal_odds numeric(10,4),
     ADD COLUMN IF NOT EXISTS locked_odds_source text,
     ADD COLUMN IF NOT EXISTS locked_at timestamptz;
+
+ALTER TYPE token_txn_type ADD VALUE IF NOT EXISTS 'WAGER_STAKE_DEBIT';

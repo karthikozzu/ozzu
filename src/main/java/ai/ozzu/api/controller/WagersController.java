@@ -7,24 +7,19 @@ import ai.ozzu.api.service.WagerService;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.context.request.NativeWebRequest;
 
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
 
 @RestController
 public class WagersController implements WagersApi {
 
     private final WagerService wagerService;
+    private final HttpServletRequest request;
 
-    public WagersController(WagerService wagerService) {
+    public WagersController(WagerService wagerService, HttpServletRequest request) {
         this.wagerService = wagerService;
-    }
-
-    @Override
-    public Optional<NativeWebRequest> getRequest() {
-        return WagersApi.super.getRequest();
+        this.request = request;
     }
 
     @Override
@@ -38,35 +33,13 @@ public class WagersController implements WagersApi {
             UUID eventId,
             WagerCreateRequest wagerCreateRequest
     ) {
-        UUID userId = resolveUserIdFromHeader();
-        String idemKey = resolveIdempotencyKey();
-
-        Wager out = wagerService.create(domainId, eventId, userId, idemKey, wagerCreateRequest);
+        String idemKey = resolveHeader("Idempotency-Key");
+        Wager out = wagerService.create(domainId, eventId, idemKey, wagerCreateRequest);
         return ResponseEntity.ok(out);
     }
 
-    private UUID resolveUserIdFromHeader() {
-        Optional<NativeWebRequest> reqOpt = getRequest();
-        if (reqOpt.isEmpty()) throw new IllegalArgumentException("Request not available");
-
-        HttpServletRequest servletReq = reqOpt.get().getNativeRequest(HttpServletRequest.class);
-        if (servletReq == null) throw new IllegalArgumentException("Request not available");
-
-        String header = servletReq.getHeader("X-User-Id");
-        if (header == null || header.isBlank()) {
-            throw new IllegalArgumentException("Missing X-User-Id header");
-        }
-        return UUID.fromString(header.trim());
-    }
-
-    private String resolveIdempotencyKey() {
-        Optional<NativeWebRequest> reqOpt = getRequest();
-        if (reqOpt.isEmpty()) return null;
-
-        HttpServletRequest servletReq = reqOpt.get().getNativeRequest(HttpServletRequest.class);
-        if (servletReq == null) return null;
-
-        String header = servletReq.getHeader("Idempotency-Key");
+    private String resolveHeader(String name) {
+        String header = request.getHeader(name);
         return (header == null || header.isBlank()) ? null : header.trim();
     }
 }
