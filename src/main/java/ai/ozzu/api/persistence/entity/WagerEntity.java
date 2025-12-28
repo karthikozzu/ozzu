@@ -16,10 +16,6 @@ import java.util.UUID;
 @IdClass(WagerEntity.WagerPk.class)
 public class WagerEntity {
 
-    // =========================
-    // Composite Primary Key
-    // =========================
-
     @Id
     @Column(name = "event_id", nullable = false, updatable = false)
     private UUID eventId;
@@ -27,10 +23,6 @@ public class WagerEntity {
     @Id
     @Column(name = "id", nullable = false, updatable = false)
     private UUID id;
-
-    // =========================
-    // Columns
-    // =========================
 
     @Column(name = "domain_id", nullable = false)
     private UUID domainId;
@@ -42,10 +34,12 @@ public class WagerEntity {
     private String name;
 
     @Enumerated(EnumType.STRING)
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     @Column(name = "status", nullable = false)
     private WagerStatus status = WagerStatus.CREATED;
 
     @Enumerated(EnumType.STRING)
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     @Column(name = "outcome", nullable = false)
     private WagerOutcome outcome = WagerOutcome.PENDING;
 
@@ -144,10 +138,6 @@ public class WagerEntity {
 
     public OffsetDateTime getUpdatedAt() { return updatedAt; }
     public void setUpdatedAt(OffsetDateTime updatedAt) { this.updatedAt = updatedAt; }
-
-    // =========================
-    // IdClass definition
-    // =========================
 
     public static class WagerPk implements java.io.Serializable {
         private UUID eventId;

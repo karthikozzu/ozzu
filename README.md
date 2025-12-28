@@ -32,6 +32,10 @@ psql -h localhost -p 5432 -U postgres
 ### Start the App 
 ```
 mvn spring-boot:run -Dspring-boot.run.profiles=dev
+
+In Debug Mode
+mvn spring-boot:run -Dspring-boot.run.profiles=dev -Dspring-boot.run.jvmArguments="-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=5005"
+
 ```
 
 ## Ozzu Run In Docker

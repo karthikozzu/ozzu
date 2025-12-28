@@ -24,6 +24,11 @@ logging:
   level:
     org.hibernate.SQL: warn
     org.hibernate.orm.jdbc.bind: warn
+    org.springframework.web: info
+    ai.ozzu.api.service: info
+    ai.ozzu.api.service.WagerService: debug
+    ai.ozzu.api.service.TokenLedgerService: debug
+    ai.ozzu.api.controller: info
 
 management:
   endpoints:

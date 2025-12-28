@@ -59,4 +59,44 @@ public class EventEntity extends AuditedEntity {
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name="internal_properties", nullable=false, columnDefinition="jsonb")
     private Map<String, Object> internalProperties = Map.of();
+
+    public DomainEntity getDomain() {
+        return domain;
+    }
+
+    public SeriesEntity getSeries() {
+        return series;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+    public EventStatus getStatus() {
+        return status;
+    }
+
+    public OffsetDateTime getTimeEventStart() {
+        return timeEventStart;
+    }
+
+    public OffsetDateTime getTimeEventEnd() {
+        return timeEventEnd;
+    }
+
+    public boolean isCanceled() {
+        return canceled;
+    }
+
+    public boolean isCompleted() {
+        return completed;
+    }
+
+    public Map<String, Object> getInternalProperties() {
+        return internalProperties;
+    }
 }

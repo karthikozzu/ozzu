@@ -38,4 +38,24 @@ public class ConceptTermEntity extends AuditedEntity {
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name="internal_properties", nullable=false, columnDefinition="jsonb")
     private Map<String, Object> internalProperties = Map.of();
+
+    public UUID getId() {
+        return id;
+    }
+
+    public DomainEntity getDomain() {
+        return domain;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public ConceptTermEntity getParent() {
+        return parent;
+    }
+
+    public Map<String, Object> getInternalProperties() {
+        return internalProperties;
+    }
 }

@@ -5,6 +5,7 @@ import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.UuidGenerator;
 import org.hibernate.type.SqlTypes;
 
+import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.util.Map;
 import java.util.UUID;
@@ -56,6 +57,55 @@ public class WagerCardBindingEntity {
     @Column(name="pick_payload", nullable=false, columnDefinition="jsonb")
     private Map<String, Object> pickPayload = Map.of();
 
+    @Column(name="locked_decimal_odds", precision = 10, scale = 4)
+    private BigDecimal lockedDecimalOdds;
+
+    @Column(name="locked_odds_source")
+    private String lockedOddsSource;
+
+    @Column(name="locked_at")
+    private OffsetDateTime lockedAt;
+
     @Column(name="created_at", nullable=false, updatable=false)
     private OffsetDateTime createdAt = OffsetDateTime.now();
+
+    public UUID getId() { return id; }
+
+    public WagerCardEntity getWagerCard() { return wagerCard; }
+    public void setWagerCard(WagerCardEntity wagerCard) { this.wagerCard = wagerCard; }
+
+    public WagerCardTypeBindingEntity getWagerCardTypeBinding() { return wagerCardTypeBinding; }
+    public void setWagerCardTypeBinding(WagerCardTypeBindingEntity wagerCardTypeBinding) { this.wagerCardTypeBinding = wagerCardTypeBinding; }
+
+    public ScopedReferentEntity getScopedReferent() { return scopedReferent; }
+    public void setScopedReferent(ScopedReferentEntity scopedReferent) { this.scopedReferent = scopedReferent; }
+
+    public String getEntityType() { return entityType; }
+    public void setEntityType(String entityType) { this.entityType = entityType; }
+
+    public PlayerEntity getPlayer() { return player; }
+    public void setPlayer(PlayerEntity player) { this.player = player; }
+
+    public TeamEntity getTeam() { return team; }
+    public void setTeam(TeamEntity team) { this.team = team; }
+
+    public String getEntityLabel() { return entityLabel; }
+    public void setEntityLabel(String entityLabel) { this.entityLabel = entityLabel; }
+
+    public Map<String, Object> getPickPayload() { return pickPayload; }
+    public void setPickPayload(Map<String, Object> pickPayload) {
+        this.pickPayload = (pickPayload == null ? Map.of() : pickPayload);
+    }
+
+    public BigDecimal getLockedDecimalOdds() { return lockedDecimalOdds; }
+    public void setLockedDecimalOdds(BigDecimal lockedDecimalOdds) { this.lockedDecimalOdds = lockedDecimalOdds; }
+
+    public String getLockedOddsSource() { return lockedOddsSource; }
+    public void setLockedOddsSource(String lockedOddsSource) { this.lockedOddsSource = lockedOddsSource; }
+
+    public OffsetDateTime getLockedAt() { return lockedAt; }
+    public void setLockedAt(OffsetDateTime lockedAt) { this.lockedAt = lockedAt; }
+
+    public OffsetDateTime getCreatedAt() { return createdAt; }
+    public void setCreatedAt(OffsetDateTime createdAt) { this.createdAt = createdAt; }
 }

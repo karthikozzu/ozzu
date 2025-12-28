@@ -72,4 +72,68 @@ public class ScopedReferentEntity extends AuditedEntity {
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name="internal_properties", nullable=false, columnDefinition="jsonb")
     private Map<String, Object> internalProperties = Map.of();
+
+    public DomainEntity getDomain() {
+        return domain;
+    }
+
+    public EventEntity getEvent() {
+        return event;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public String getGroupAffiliation() {
+        return groupAffiliation;
+    }
+
+    public boolean isGenerated() {
+        return generated;
+    }
+
+    public ConceptTermEntity getConceptTerm() {
+        return conceptTerm;
+    }
+
+    public String getEntityType() {
+        return entityType;
+    }
+
+    public PlayerEntity getPlayer() {
+        return player;
+    }
+
+    public TeamEntity getTeam() {
+        return team;
+    }
+
+    public String getEntityLabel() {
+        return entityLabel;
+    }
+
+    public int getPointsValue() {
+        return pointsValue;
+    }
+
+    public boolean isOptional() {
+        return optional;
+    }
+
+    public boolean isEventConstrained() {
+        return eventConstrained;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+    public Map<String, Object> getInternalProperties() {
+        return internalProperties;
+    }
+
+    public UUID getId() {
+        return id;
+    }
 }

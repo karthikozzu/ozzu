@@ -33,4 +33,32 @@ public class WagerCardEntity {
 
     @Column(name="created_at", nullable=false, updatable=false)
     private OffsetDateTime createdAt = OffsetDateTime.now();
+
+    public UUID getId() {
+        return id;
+    }
+
+    public WagerEntity getWager() {
+        return wager;
+    }
+
+    public void setWager(WagerEntity wager) {
+        this.wager = wager;
+    }
+
+    public WagerCardTypeEntity getWagerCardType() {
+        return wagerCardType;
+    }
+
+    public void setWagerCardType(WagerCardTypeEntity wagerCardType) {
+        this.wagerCardType = wagerCardType;
+    }
+
+    public OffsetDateTime getCreatedAt() {
+        return createdAt;
+    }
+
+    public void setCreatedAt(OffsetDateTime createdAt) {
+        this.createdAt = createdAt;
+    }
 }

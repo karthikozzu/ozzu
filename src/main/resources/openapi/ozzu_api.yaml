@@ -279,6 +279,26 @@ paths:
               schema:
                 $ref: "#/components/schemas/Relationship"
 
+  /ozzu/domains/{domainId}/events/{eventId}/odds:
+    get:
+      tags: [ Odds ]
+      summary: Quote odds for an event + wager card type
+      parameters:
+        - $ref: "#/components/parameters/DomainId"
+        - $ref: "#/components/parameters/EventId"
+        - name: wagerCardTypeId
+          in: query
+          required: true
+          schema:
+            $ref: "#/components/schemas/UUID"
+      responses:
+        "200":
+          description: Odds quote
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OddsQuoteResponse"
+
   /ozzu/domains/{domainId}/events/{eventId}/scopedReferents:
     post:
       tags: [ScopedReferents]
@@ -1073,6 +1093,69 @@ components:
       type: string
       enum: [PLAYER, TEAM, TEXT]
 
+    WagerCreateRequest:
+      type: object
+      required: [ name, wagerNarrativeDetails, stakeTokens ]
+      properties:
+        name: { type: string }
+        stakeTokens:
+          type: integer
+          minimum: 0
+          description: Stake amount in Ozzu tokens
+        acceptOddsSlippageBps:
+          type: integer
+          minimum: 0
+          maximum: 10000
+          default: 50
+          description: Allowed slippage in basis points (50 = 0.50%)
+        wagerNarrativeDetails:
+          type: array
+          items:
+            $ref: "#/components/schemas/WagerNarrativeDetail"
+        internalProperties:
+          $ref: "#/components/schemas/InternalProperties"
+
+    OddsQuoteResponse:
+      type: object
+      required: [ domainId, eventId, wagerCardTypeId, bindings ]
+      properties:
+        domainId: { $ref: "#/components/schemas/UUID" }
+        eventId: { $ref: "#/components/schemas/UUID" }
+        wagerCardTypeId: { $ref: "#/components/schemas/UUID" }
+        locked:
+          type: boolean
+          description: True when quoting is disabled due to event status
+        bindings:
+          type: array
+          items:
+            $ref: "#/components/schemas/OddsBindingQuote"
+        internalProperties:
+          $ref: "#/components/schemas/InternalProperties"
+
+    OddsBindingQuote:
+      type: object
+      required: [ wagerCardTypeBindingId, conceptTermId, picks ]
+      properties:
+        wagerCardTypeBindingId: { $ref: "#/components/schemas/UUID" }
+        conceptTermId: { $ref: "#/components/schemas/UUID" }
+        picks:
+          type: array
+          items:
+            $ref: "#/components/schemas/OddsPickQuote"
+
+    OddsPickQuote:
+      type: object
+      required: [ scopedReferentId, name, decimalOdds ]
+      properties:
+        scopedReferentId: { $ref: "#/components/schemas/UUID" }
+        name: { type: string }
+        decimalOdds: { type: number, format: double }
+        impliedProb:
+          type: number
+          format: double
+        internalProperties:
+          $ref: "#/components/schemas/InternalProperties"
+
     ScopedReferentCreateRequest:
       type: object
       required: [name, conceptTermId, entityType]
@@ -1120,18 +1203,6 @@ components:
     WagerStatus:
       type: string
       enum: [DRAFT, PLACED, WON, LOST, VOID, CANCELED]
-
-    WagerCreateRequest:
-      type: object
-      required: [name, wagerNarrativeDetails]
-      properties:
-        name: { type: string }
-        wagerNarrativeDetails:
-          type: array
-          items:
-            $ref: "#/components/schemas/WagerNarrativeDetail"
-        internalProperties:
-          $ref: "#/components/schemas/InternalProperties"
 
     WagerNarrativeDetail:
       type: object
