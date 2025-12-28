@@ -45,4 +45,32 @@ public class WagerCardTypeBindingEntity {
 
     @Column(name="created_at", nullable=false, updatable=false)
     private OffsetDateTime createdAt = OffsetDateTime.now();
+
+    public DomainEntity getDomain() {
+        return domain;
+    }
+
+    public WagerCardTypeEntity getWagerCardType() {
+        return wagerCardType;
+    }
+
+    public ConceptTermEntity getConceptTerm() {
+        return conceptTerm;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+    public Map<String, Object> getInternalProperties() {
+        return internalProperties;
+    }
+
+    public UUID getConceptTermId() {
+        return getConceptTerm().getId();
+    }
+
+    public UUID getId() {
+        return id;
+    }
 }

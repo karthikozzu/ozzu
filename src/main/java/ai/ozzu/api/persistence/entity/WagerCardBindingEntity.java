@@ -58,4 +58,69 @@ public class WagerCardBindingEntity {
 
     @Column(name="created_at", nullable=false, updatable=false)
     private OffsetDateTime createdAt = OffsetDateTime.now();
+
+    public WagerCardEntity getWagerCard() {
+        return wagerCard;
+    }
+
+    public WagerCardTypeBindingEntity getWagerCardTypeBinding() {
+        return wagerCardTypeBinding;
+    }
+
+    public ScopedReferentEntity getScopedReferent() {
+        return scopedReferent;
+    }
+
+    public String getEntityType() {
+        return entityType;
+    }
+
+    public PlayerEntity getPlayer() {
+        return player;
+    }
+
+    public TeamEntity getTeam() {
+        return team;
+    }
+
+    public String getEntityLabel() {
+        return entityLabel;
+    }
+
+    public Map<String, Object> getPickPayload() {
+        return pickPayload;
+    }
+
+    // add at bottom of WagerCardBindingEntity
+
+    public void setWagerCard(WagerCardEntity wagerCard) {
+        this.wagerCard = wagerCard;
+    }
+
+    public void setWagerCardTypeBinding(WagerCardTypeBindingEntity wagerCardTypeBinding) {
+        this.wagerCardTypeBinding = wagerCardTypeBinding;
+    }
+
+    public void setScopedReferent(ScopedReferentEntity scopedReferent) {
+        this.scopedReferent = scopedReferent;
+    }
+
+    public void setPlayer(PlayerEntity player) {
+        this.player = player;
+    }
+
+    public void setTeam(TeamEntity team) {
+        this.team = team;
+    }
+
+    public void setEntityLabel(String entityLabel) {
+        this.entityLabel = entityLabel;
+    }
+
+    public void setPickPayload(Map<String, Object> pickPayload) {
+        this.pickPayload = (pickPayload == null ? Map.of() : pickPayload);
+    }
+
+    public UUID getId() { return id; }
+    public void setId(UUID id) { this.id = id; }
 }
