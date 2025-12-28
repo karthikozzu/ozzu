@@ -500,8 +500,25 @@ CREATE TABLE IF NOT EXISTS event_scores (
 CREATE INDEX IF NOT EXISTS ix_event_scores_event_time ON event_scores(event_id, created_at DESC);
 
 -- =========================================================
--- Token ledger + balance view (composite wager ref)
+-- Token ledger + balances (atomic debit/credit)
 -- =========================================================
+
+-- 1) Enum (if not already)
+DO $$
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'token_txn_type') THEN
+            CREATE TYPE token_txn_type AS ENUM ('DEBIT_STAKE','CREDIT_PAYOUT','REFUND_VOID');
+        END IF;
+    END$$;
+
+-- 2) Token balance table (required for atomic debit)
+CREATE TABLE IF NOT EXISTS user_token_balances (
+                                                   user_id    uuid PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+                                                   balance    integer NOT NULL DEFAULT 0,
+                                                   updated_at timestamptz NOT NULL DEFAULT now()
+);
+
+-- 3) Token ledger (yours + idempotency key)
 CREATE TABLE IF NOT EXISTS token_ledger (
                                             id              uuid PRIMARY KEY DEFAULT gen_random_uuid(),
                                             user_id         uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -513,10 +530,12 @@ CREATE TABLE IF NOT EXISTS token_ledger (
 
                                             lounge_id       uuid REFERENCES lounges(id) ON DELETE SET NULL,
                                             event_lounge_id uuid REFERENCES event_lounges(id) ON DELETE SET NULL,
+
                                             txn_type        token_txn_type NOT NULL,
-                                            amount          integer NOT NULL,
+                                            amount          integer NOT NULL, -- convention: DEBIT is negative, CREDIT is positive
                                             reason          text,
                                             metadata        jsonb NOT NULL DEFAULT '{}'::jsonb,
+                                            idempotency_key text,
                                             created_at      timestamptz NOT NULL DEFAULT now(),
 
                                             CONSTRAINT fk_token_ledger_wager
@@ -525,18 +544,22 @@ CREATE TABLE IF NOT EXISTS token_ledger (
                                                     ON DELETE SET NULL
 );
 
+-- Idempotency: allow safe retries
+CREATE UNIQUE INDEX IF NOT EXISTS ux_token_ledger_idem
+    ON token_ledger(user_id, txn_type, idempotency_key)
+    WHERE idempotency_key IS NOT NULL;
+
 CREATE INDEX IF NOT EXISTS ix_token_ledger_user_time ON token_ledger(user_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS ix_token_ledger_event ON token_ledger(event_id);
 CREATE INDEX IF NOT EXISTS ix_token_ledger_wager ON token_ledger(wager_event_id, wager_id);
 CREATE INDEX IF NOT EXISTS ix_token_ledger_lounge ON token_ledger(lounge_id);
 CREATE INDEX IF NOT EXISTS ix_token_ledger_event_lounge ON token_ledger(event_lounge_id);
 
+-- Optional: keep your view (good for debugging)
 CREATE OR REPLACE VIEW v_user_token_balance AS
 SELECT user_id, COALESCE(SUM(amount), 0) AS balance
 FROM token_ledger
-GROUP BY user_id;
-
--- =========================================================
+GROUP BY user_id;-- =========================================================
 -- Sessions
 -- =========================================================
 CREATE TABLE IF NOT EXISTS user_sessions (
@@ -1376,3 +1399,9 @@ CREATE TRIGGER tr_auto_join_user_to_default_lounges
     ON users
     FOR EACH ROW
 EXECUTE FUNCTION trg_auto_join_user_to_default_lounges();
+
+
+ALTER TABLE wager_card_bindings
+    ADD COLUMN IF NOT EXISTS locked_decimal_odds numeric(10,4),
+    ADD COLUMN IF NOT EXISTS locked_odds_source text,
+    ADD COLUMN IF NOT EXISTS locked_at timestamptz;
