@@ -34,6 +34,10 @@ public class WagerCardEntity {
     @Column(name="created_at", nullable=false, updatable=false)
     private OffsetDateTime createdAt = OffsetDateTime.now();
 
+    public UUID getId() {
+        return id;
+    }
+
     public WagerEntity getWager() {
         return wager;
     }

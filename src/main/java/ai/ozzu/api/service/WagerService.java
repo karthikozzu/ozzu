@@ -88,7 +88,7 @@ public class WagerService {
         log.info("wager.create.start domainId={} eventId={} userId={} idemKeyPresent={}",
                 domainId, eventId, userId, (idemKey != null && !idemKey.isBlank()));
 
-        // Validate event+domain
+        // validate + load
         EventEntity event = eventRepo.findByIdAndDomainId(eventId, domainId)
                 .orElseThrow(() -> new IllegalArgumentException("Invalid event/domain"));
 
@@ -98,7 +98,7 @@ public class WagerService {
         DomainEntity domain = domainRepo.findById(domainId)
                 .orElseThrow(() -> new IllegalArgumentException("Invalid domainId"));
 
-        Integer stake = (req != null && req.getStakeTokens() != null) ? req.getStakeTokens() : 0;
+        int stake = (req != null && req.getStakeTokens() != null) ? req.getStakeTokens() : 0;
 
         log.info("wager.create.request domainId={} eventId={} userId={} stakeTokens={} namePresent={} narrativeDetailsCount={}",
                 domainId, eventId, userId, stake,
@@ -115,7 +115,7 @@ public class WagerService {
 
         w = wagerRepo.save(w);
 
-        // 2) Create wager cards + bindings (+ lock odds snapshot v0)
+        // 2) Create wager cards + bindings (and lock odds per binding)
         if (req != null && req.getWagerNarrativeDetails() != null) {
             for (WagerNarrativeDetail nd : req.getWagerNarrativeDetails()) {
                 if (nd == null || nd.getReferentBindings() == null) continue;
@@ -126,7 +126,6 @@ public class WagerService {
                     WagerCardTypeEntity cardType = wagerCardTypeRepo.findById(cardReq.getWagerCardTypeId())
                             .orElseThrow(() -> new IllegalArgumentException("Invalid wagerCardTypeId: " + cardReq.getWagerCardTypeId()));
 
-                    // Create wager card row
                     WagerCardEntity wc = new WagerCardEntity();
                     wc.setWager(w);
                     wc.setWagerCardType(cardType);
@@ -169,41 +168,27 @@ public class WagerService {
 
                         b.setEntityLabel(pick.getEntityLabel());
 
-                        Map<String, Object> pickPayload = toMap(pick.getPickPayload());
-                        b.setPickPayload(pickPayload);
+                        Map<String, Object> payload = toMap(pick.getPickPayload());
+                        b.setPickPayload(payload);
 
-                        BigDecimal lockedOdds = extractDecimalOdds(pickPayload);
-                        b.setLockedDecimalOdds(lockedOdds);
-                        b.setLockedOddsSource("REQUEST");
-                        b.setLockedAt(OffsetDateTime.now());
+                        // ---- Odds lock (best-effort until Odds model is finalized) ----
+                        lockOddsFromPayload(b, payload);
 
                         wagerCardBindingRepo.save(b);
 
-                        log.info("wager.create.binding.saved domainId={} eventId={} wagerId={} userId={} cardTypeId={} typeBindingId={} lockedOdds={}",
-                                domainId, eventId, w.getId(), userId,
-                                cardReq.getWagerCardTypeId(), pick.getWagerCardTypeBindingId(), lockedOdds);
+                        log.info("wager.binding.saved domainId={} eventId={} wagerId={} cardId={} bindingId={}",
+                                domainId, eventId, w.getId(), wc.getId(), b.getId());
                     }
                 }
             }
         }
 
         // 3) Token debit (idempotent)
-        tokenLedgerService.debitStakeOnce(
-                user,
-                domain,
-                event,
-                w,
-                stake == null ? 0 : stake,
-                idemKey
-        );
+        tokenLedgerService.debitStakeOnce(user, domain, event, w, stake, idemKey);
 
-        log.info("wager.create.debit.done domainId={} eventId={} wagerId={} userId={} stakeTokens={}",
+        log.info("wager.create.success domainId={} eventId={} wagerId={} userId={} stakeTokens={}",
                 domainId, eventId, w.getId(), userId, stake);
 
-        log.info("wager.create.success domainId={} eventId={} wagerId={} userId={}",
-                domainId, eventId, w.getId(), userId);
-
-        // 4) Map entity -> API model
         return new Wager()
                 .id(w.getId())
                 .domainId(w.getDomainId())
@@ -212,6 +197,33 @@ public class WagerService {
                 .name(w.getName())
                 .stakeTokens(w.getStakeTokens())
                 .payoutTokens(w.getPayoutTokens());
+    }
+
+    /**
+     * Temporary odds-lock logic until the Odds model is finalized.
+     *
+     * Expected pickPayload (any one works):
+     *  - decimalOdds: 1.85   (number or string)
+     *  - lockedDecimalOdds: 1.85
+     *  - oddsDecimal: 1.85
+     *
+     * Optional:
+     *  - oddsSource / lockedOddsSource: "internal" | "feed" | "manual"
+     */
+    private void lockOddsFromPayload(WagerCardBindingEntity b, Map<String, Object> payload) {
+        BigDecimal dec = extractDecimal(payload,
+                "lockedDecimalOdds", "decimalOdds", "oddsDecimal", "decimal_odds", "decimal");
+
+        String src = extractString(payload, "lockedOddsSource", "oddsSource", "odds_source", "source");
+
+        if (dec != null) {
+            b.setLockedDecimalOdds(dec);
+            b.setLockedOddsSource(src != null ? src : "payload");
+            b.setLockedAt(OffsetDateTime.now());
+
+            log.info("wager.binding.oddsLocked bindingId={} decOdds={} source={}",
+                    b.getId(), dec, b.getLockedOddsSource());
+        }
     }
 
     private UUID currentUserId() {
@@ -229,15 +241,29 @@ public class WagerService {
         return objectMapper.convertValue(payload, Map.class);
     }
 
-    private BigDecimal extractDecimalOdds(Map<String, Object> pickPayload) {
-        if (pickPayload == null) return new BigDecimal("1.0000");
-        Object v = pickPayload.get("decimalOdds");
-        if (v == null) return new BigDecimal("1.0000");
-        try {
-            return new BigDecimal(v.toString()).setScale(4, BigDecimal.ROUND_HALF_UP);
-        } catch (Exception e) {
-            // don’t fail wager create for now; default safe odds
-            return new BigDecimal("1.0000");
+    private BigDecimal extractDecimal(Map<String, Object> payload, String... keys) {
+        if (payload == null) return null;
+        for (String k : keys) {
+            Object v = payload.get(k);
+            if (v == null) continue;
+            try {
+                if (v instanceof Number n) return new BigDecimal(n.toString());
+                if (v instanceof String s && !s.isBlank()) return new BigDecimal(s.trim());
+            } catch (Exception ignore) {
+                // ignore bad formatting; leave null
+            }
         }
+        return null;
+    }
+
+    private String extractString(Map<String, Object> payload, String... keys) {
+        if (payload == null) return null;
+        for (String k : keys) {
+            Object v = payload.get(k);
+            if (v == null) continue;
+            String s = v.toString();
+            if (!s.isBlank()) return s;
+        }
+        return null;
     }
 }
