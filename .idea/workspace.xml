@@ -5,18 +5,7 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="7e4d98bc-5cdc-4c99-8099-a19e10a9930c" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/persistence/entity/UserTokenBalanceEntity.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/persistence/repo/UserTokenBalanceRepository.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/service/TokenLedgerService.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/controller/WagersController.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/controller/WagersController.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/persistence/entity/TokenLedgerEntity.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/persistence/entity/TokenLedgerEntity.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/persistence/entity/WagerCardBindingEntity.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/persistence/entity/WagerCardBindingEntity.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/persistence/enums/TokenTxnType.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/persistence/enums/TokenTxnType.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/persistence/repo/TokenLedgerRepository.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/persistence/repo/TokenLedgerRepository.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/service/WagerService.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/service/WagerService.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/resources/application.yml" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/resources/application.yml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/resources/db/dm.sql" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/resources/db/dm.sql" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/service/TokenLedgerService.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/service/TokenLedgerService.java" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
