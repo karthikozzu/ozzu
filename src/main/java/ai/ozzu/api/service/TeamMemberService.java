@@ -76,7 +76,7 @@ public class TeamMemberService {
                         return toApi(domainId, saved);
                     } catch (DataIntegrityViolationException e) {
                         // Unique constraint (team_id, player_id)
-                        throw new EntityAlreadyExistsException("Player already exists in team", e);
+                        throw new EntityAlreadyExistsException("Player already exists in team");
                     }
                 });
     }

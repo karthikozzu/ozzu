@@ -5,35 +5,7 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="7e4d98bc-5cdc-4c99-8099-a19e10a9930c" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/controller/DomainController.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/controller/SeriesController.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/controller/TeamMemberController.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/controller/TeamPlayerController.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/controller/TeamsController.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/controller/TokensController.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/exceptions/EntityAlreadyExistsException.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/exceptions/EntityNotFoundException.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/exceptions/MissingFieldException.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/service/DomainService.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/service/PlayersService.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/service/SeriesService.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/service/TeamMemberService.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/service/TeamsService.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/service/TokenBalanceService.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/controller/SpotlightController.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/controller/SpotlightController.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/persistence/base/AuditedEntity.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/persistence/base/AuditedEntity.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/persistence/entity/DomainEntity.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/persistence/entity/DomainEntity.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/persistence/entity/PlayerEntity.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/persistence/entity/PlayerEntity.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/persistence/entity/SeriesEntity.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/persistence/entity/SeriesEntity.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/persistence/entity/TeamEntity.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/persistence/entity/TeamEntity.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/persistence/entity/TeamMemberEntity.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/persistence/entity/TeamMemberEntity.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/persistence/repo/DomainRepository.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/persistence/repo/DomainRepository.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/persistence/repo/PlayerRepository.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/persistence/repo/PlayerRepository.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/persistence/repo/SeriesRepository.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/persistence/repo/SeriesRepository.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/persistence/repo/TeamMemberRepository.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/persistence/repo/TeamMemberRepository.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/persistence/repo/TeamRepository.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/persistence/repo/TeamRepository.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/resources/openapi/ozzu_api.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/resources/openapi/ozzu_api.yaml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/service/TeamMemberService.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/service/TeamMemberService.java" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
