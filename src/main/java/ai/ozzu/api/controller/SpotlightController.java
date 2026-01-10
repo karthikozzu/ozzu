@@ -19,7 +19,7 @@ public class SpotlightController implements SpotlightApi {
     }
 
     @Override
-    public ResponseEntity<SpotlightResponse> ozzuDomainsDomainIdActionsGetSpotlightPost(UUID domainId, SpotlightRequest spotlightRequest) {
-        return SpotlightApi.super.ozzuDomainsDomainIdActionsGetSpotlightPost(domainId, spotlightRequest);
+    public ResponseEntity<SpotlightResponse> ozzuDomainsDomainIdActionsGetSpotlightGet(UUID domainId, SpotlightRequest spotlightRequest) {
+        return SpotlightApi.super.ozzuDomainsDomainIdActionsGetSpotlightGet(domainId, spotlightRequest);
     }
 }

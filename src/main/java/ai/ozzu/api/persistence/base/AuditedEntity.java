@@ -26,4 +26,12 @@ public abstract class AuditedEntity {
     void preUpdate() {
         updatedAt = OffsetDateTime.now();
     }
+
+    public OffsetDateTime getCreatedAt() {
+        return createdAt;
+    }
+
+    public OffsetDateTime getUpdatedAt() {
+        return updatedAt;
+    }
 }

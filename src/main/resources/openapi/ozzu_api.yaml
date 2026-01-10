@@ -34,6 +34,7 @@ tags:
   - name: Notifications
   - name: Artifacts
   - name: Tokens
+  - name: TeamMembers
 
 security:
   - BearerAuth: []
@@ -104,7 +105,7 @@ paths:
                 $ref: "#/components/schemas/LoginResponse"
 
   /ozzu/domains/{domainId}/actions/getSpotlight:
-    post:
+    get:
       tags: [Spotlight]
       summary: Spotlight feed
       description: >
@@ -143,6 +144,33 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Domain"
+    get:
+      tags: [ Domains ]
+      summary: List domains
+      x-mvp: true
+      responses:
+        "200":
+          description: Domain list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Domain"
+
+  /ozzu/domains/{domainId}:
+    get:
+      tags: [ Domains ]
+      summary: Get domain by id
+      parameters:
+        - $ref: "#/components/parameters/DomainId"
+      responses:
+        "200":
+          description: Domain
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Domain"
 
   /ozzu/domains/{domainId}/events:
     post:
@@ -164,6 +192,39 @@ paths:
               schema:
                 $ref: "#/components/schemas/Event"
 
+    get:
+      tags: [ Events ]
+      summary: List scheduled events for domain
+      parameters:
+        - $ref: "#/components/parameters/DomainId"
+        - name: seriesId
+          in: query
+          schema: { type: string, format: uuid }
+        - name: teamId
+          in: query
+          schema: { type: string, format: uuid }
+        - name: fromDate
+          in: query
+          schema: { type: string, format: date }
+        - name: toDate
+          in: query
+          schema: { type: string, format: date }
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [ SCHEDULED, LIVE, COMPLETED, CANCELED ]
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/Cursor"
+      responses:
+        "200":
+          description: Events list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EventListResponse"
+
   /ozzu/domains/{domainId}/events/{eventId}:
     get:
       tags: [Events]
@@ -183,6 +244,24 @@ paths:
                 $ref: "#/components/schemas/EventPageResponse"
 
   /ozzu/domains/{domainId}/players:
+    post:
+      tags: [ Players ]
+      summary: Create player (admin/backoffice)
+      parameters:
+        - $ref: "#/components/parameters/DomainId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PlayerCreateRequest"
+      responses:
+        "201":
+          description: Player created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Player"
     get:
       tags: [Players]
       summary: List players for a domain
@@ -217,6 +296,36 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Series"
+    get:
+      tags: [ Series ]
+      summary: List series for a domain
+      parameters:
+        - $ref: "#/components/parameters/DomainId"
+      responses:
+        "200":
+          description: Series list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Series"
+
+  /ozzu/domains/{domainId}/series/{seriesId}:
+    get:
+      tags: [ Series ]
+      summary: Get series by id
+      parameters:
+        - $ref: "#/components/parameters/DomainId"
+        - $ref: "#/components/parameters/SeriesId"
+      responses:
+        "200":
+          description: Series
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Series"
+
 
   /ozzu/domains/{domainId}/series/{seriesId}/teams:
     post:
@@ -238,6 +347,41 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Team"
+    get:
+      tags: [ Teams ]
+      summary: List teams in a series
+      parameters:
+        - $ref: "#/components/parameters/DomainId"
+        - $ref: "#/components/parameters/SeriesId"
+      responses:
+        "200":
+          description: Team list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Team"
+
+  /ozzu/domains/{domainId}/teams:
+    get:
+      tags: [ Teams ]
+      summary: List teams for a domain
+      parameters:
+        - $ref: "#/components/parameters/DomainId"
+        - name: seriesId
+          in: query
+          required: false
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Team list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Team"
 
   /ozzu/domains/{domainId}/conceptTerms:
     post:
@@ -474,6 +618,78 @@ paths:
               schema:
                 $ref: "#/components/schemas/EventLounge"
 
+  /ozzu/domains/{domainId}/teams/{teamId}/members:
+    post:
+      tags: [ TeamMembers, Teams ]
+      summary: Add player to team (create team member)
+      description: >
+        Adds a player to a team roster. Enforces:
+        - team.domainId == domainId
+        - player.domainId == domainId
+        - uniqueness (teamId, playerId)
+      parameters:
+        - $ref: "#/components/parameters/DomainId"
+        - $ref: "#/components/parameters/TeamId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TeamMemberCreateRequest"
+      responses:
+        "201":
+          description: Team member created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TeamMember"
+        "409":
+          description: Player already exists in team
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "404":
+          description: Domain/Team/Player not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
+    get:
+      tags: [ TeamMembers, Teams ]
+      summary: List team roster (team members)
+      parameters:
+        - $ref: "#/components/parameters/DomainId"
+        - $ref: "#/components/parameters/TeamId"
+      responses:
+        "200":
+          description: Team roster
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/TeamMember"
+
+  /ozzu/domains/{domainId}/teams/{teamId}/members/{playerId}:
+    delete:
+      tags: [ TeamMembers, Teams ]
+      summary: Remove player from team (delete team member)
+      parameters:
+        - $ref: "#/components/parameters/DomainId"
+        - $ref: "#/components/parameters/TeamId"
+        - $ref: "#/components/parameters/PlayerId"
+      responses:
+        "204":
+          description: Removed
+        "404":
+          description: Membership not found (or domain/team/player not found)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
   /ozzu/domains/{domainId}/events/{eventId}/eventLounges/{eventLoungeId}/loungeEntries:
     post:
       tags: [LoungeEntries]
@@ -685,6 +901,18 @@ components:
 
     DomainId:
       name: domainId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+
+    TeamId:
+      name: teamId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+
+    PlayerId:
+      name: playerId
       in: path
       required: true
       schema: { type: string, format: uuid }
@@ -1551,3 +1779,59 @@ components:
           description: Cursor for next page (omit or null if none)
         hasMore:
           type: boolean
+
+    EventListResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Event"
+        nextCursor:
+          type: string
+          nullable: true
+        hasMore:
+          type: boolean
+        internalProperties:
+          $ref: "#/components/schemas/InternalProperties"
+
+    PlayerCreateRequest:
+      type: object
+      required: [ name ]
+      properties:
+        name: { type: string }
+        description: { type: string }
+        objectProfile: { type: string }
+        objectStatus: { type: string }
+        internalProperties:
+          $ref: "#/components/schemas/InternalProperties"
+
+    TeamMemberCreateRequest:
+      type: object
+      required: [ playerId ]
+      properties:
+        playerId:
+          $ref: "#/components/schemas/UUID"
+        role:
+          type: string
+          description: Optional role (e.g., Captain, Batsman, Bowler, etc.)
+        internalProperties:
+          $ref: "#/components/schemas/InternalProperties"
+
+    TeamMember:
+      type: object
+      properties:
+        id:
+          $ref: "#/components/schemas/UUID"
+        domainId:
+          $ref: "#/components/schemas/UUID"
+        teamId:
+          $ref: "#/components/schemas/UUID"
+        playerId:
+          $ref: "#/components/schemas/UUID"
+        role:
+          type: string
+        createdAt:
+          $ref: "#/components/schemas/Timestamp"
+        internalProperties:
+          $ref: "#/components/schemas/InternalProperties"

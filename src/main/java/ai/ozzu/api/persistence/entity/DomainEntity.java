@@ -25,4 +25,32 @@ public class DomainEntity extends AuditedEntity {
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name="internal_properties", nullable=false, columnDefinition="jsonb")
     private Map<String, Object> internalProperties = Map.of();
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
+    }
+
+    public void setInternalProperties(Map<String, Object> internalProperties) {
+        this.internalProperties = internalProperties;
+    }
+
+    public UUID getId() {
+        return id;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+    public Map<String, Object> getInternalProperties() {
+        return internalProperties;
+    }
 }

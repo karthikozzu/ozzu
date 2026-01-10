@@ -4,9 +4,16 @@ import ai.ozzu.api.persistence.entity.TeamMemberEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 public interface TeamMemberRepository extends JpaRepository<TeamMemberEntity, UUID> {
   List<TeamMemberEntity> findByTeam_Id(UUID teamId);
   List<TeamMemberEntity> findByPlayer_Id(UUID playerId);
+
+  List<TeamMemberEntity> findByTeam_IdOrderByCreatedAtAsc(UUID teamId);
+
+  Optional<TeamMemberEntity> findByTeam_IdAndPlayer_Id(UUID teamId, UUID playerId);
+
+  long deleteByTeam_IdAndPlayer_Id(UUID teamId, UUID playerId);
 }

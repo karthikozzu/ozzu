@@ -37,4 +37,48 @@ public class PlayerEntity extends AuditedEntity {
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name="internal_properties", nullable=false, columnDefinition="jsonb")
     private Map<String, Object> internalProperties = Map.of();
+
+    public UUID getId() {
+        return id;
+    }
+
+    public DomainEntity getDomain() {
+        return domain;
+    }
+
+    public void setDomain(DomainEntity domain) {
+        this.domain = domain;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public String getObjectProfile() {
+        return objectProfile;
+    }
+
+    public void setObjectProfile(String objectProfile) {
+        this.objectProfile = objectProfile;
+    }
+
+    public String getObjectStatus() {
+        return objectStatus;
+    }
+
+    public void setObjectStatus(String objectStatus) {
+        this.objectStatus = objectStatus;
+    }
+
+    public Map<String, Object> getInternalProperties() {
+        return internalProperties;
+    }
+
+    public void setInternalProperties(Map<String, Object> internalProperties) {
+        this.internalProperties = internalProperties;
+    }
 }
