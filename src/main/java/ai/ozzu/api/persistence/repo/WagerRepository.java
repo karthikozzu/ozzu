@@ -16,6 +16,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 public interface WagerRepository extends JpaRepository<WagerEntity, UUID> {
+
     List<WagerEntity> findByUserIdOrderByCreatedAtDesc(UUID userId);
 
     List<WagerEntity> findByEventId(UUID eventId);
@@ -52,15 +53,22 @@ public interface WagerRepository extends JpaRepository<WagerEntity, UUID> {
 
     List<WagerEntity> findByDomainIdOrderByCreatedAtDesc(UUID domainId, Pageable pageable);
 
-    List<WagerEntity> findByEvent_IdAndIsCelebrityTrue(UUID eventId);
+    @Query("""
+            select w
+            from WagerEntity w
+            where w.eventId = :eventId
+              and w.isCelebrity = true
+            order by w.createdAt desc
+            """)
+    List<WagerEntity> findCelebrityWagersByEventId(@Param("eventId") UUID eventId);
 
     @Query("""
             select new map(
-                sum(case when w.status = 'PLACED' then 1 else 0 end) as totalPlaced,
-                sum(w.stakeTokens) as totalStake
+                sum(case when w.status = ai.ozzu.api.persistence.enums.WagerStatus.PLACED then 1 else 0 end) as totalPlaced,
+                coalesce(sum(w.stakeTokens), 0) as totalStake
             )
             from WagerEntity w
-            where w.event.id = :eventId
+            where w.eventId = :eventId
             """)
     Map<String, Object> computeSummaryForEvent(@Param("eventId") UUID eventId);
 }

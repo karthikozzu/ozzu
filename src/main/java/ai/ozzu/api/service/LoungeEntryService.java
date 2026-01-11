@@ -1,7 +1,5 @@
 package ai.ozzu.api.service;
 
-package ai.ozzu.api.service;
-
 import ai.ozzu.api.exceptions.EntityNotFoundException;
 import ai.ozzu.api.generated.model.LoungeEntry;
 import ai.ozzu.api.generated.model.LoungeEntryCreateRequest;
