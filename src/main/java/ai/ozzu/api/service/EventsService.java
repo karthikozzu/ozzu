@@ -17,6 +17,8 @@ import ai.ozzu.api.persistence.repo.EventRepository;
 import ai.ozzu.api.persistence.repo.SeriesRepository;
 import ai.ozzu.api.persistence.repo.WagerRepository;
 import org.openapitools.jackson.nullable.JsonNullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -30,15 +32,18 @@ import java.util.*;
 @Service
 public class EventsService {
 
+    private static final Logger log = LoggerFactory.getLogger(EventsService.class);
+
     private final EventRepository eventRepository;
     private final DomainRepository domainRepository;
     private final SeriesRepository seriesRepository;
-
     private final EventParticipantRepository eventParticipantRepository;
     private final WagerRepository wagerRepository;
 
-    public EventsService(EventRepository eventRepository, DomainRepository domainRepository,
-                         SeriesRepository seriesRepository, EventParticipantRepository eventParticipantRepository,
+    public EventsService(EventRepository eventRepository,
+                         DomainRepository domainRepository,
+                         SeriesRepository seriesRepository,
+                         EventParticipantRepository eventParticipantRepository,
                          WagerRepository wagerRepository) {
         this.eventRepository = eventRepository;
         this.domainRepository = domainRepository;
@@ -49,17 +54,26 @@ public class EventsService {
 
     @Transactional
     public Event createEvent(UUID domainId, EventCreateRequest req) {
+        log.info("createEvent: domainId={}, name={}", domainId, req != null ? req.getName() : null);
+
         DomainEntity domain = domainRepository.findById(domainId)
-                .orElseThrow(() -> new EntityNotFoundException("Domain not found: " + domainId));
+                .orElseThrow(() -> {
+                    log.error("createEvent: Domain not found: {}", domainId);
+                    return new EntityNotFoundException("Domain not found: " + domainId);
+                });
 
         if (req == null || req.getName() == null || req.getName().isBlank()) {
+            log.warn("createEvent: missing event name for domain {}", domainId);
             throw new IllegalArgumentException("Event name is required");
         }
 
         SeriesEntity series = null;
         if (req.getSeriesId() != null) {
             series = seriesRepository.findByIdAndDomain_Id(req.getSeriesId(), domainId)
-                    .orElseThrow(() -> new EntityNotFoundException("Series not found in domain: " + req.getSeriesId()));
+                    .orElseThrow(() -> {
+                        log.error("createEvent: Series not found in domain: {} {}", domainId, req.getSeriesId());
+                        return new EntityNotFoundException("Series not found in domain: " + req.getSeriesId());
+                    });
         }
 
         EventEntity e = new EventEntity();
@@ -71,36 +85,39 @@ public class EventsService {
         e.setTimeEventEnd(req.getTimeEventEnd());
         e.setInternalProperties(req.getInternalProperties() != null ? req.getInternalProperties() : Map.of());
 
-        // allow status override only if provided, else default SCHEDULED
         if (req.getInternalProperties() != null && req.getInternalProperties().containsKey("status")) {
             Object rawStatus = req.getInternalProperties().get("status");
             if (rawStatus instanceof String statusStr && !statusStr.isBlank()) {
                 try {
                     EventStatus st = EventStatus.valueOf(statusStr.toUpperCase(Locale.ROOT));
                     e.setStatus(st);
+                    log.debug("createEvent: set custom status={}", st);
                 } catch (IllegalArgumentException ex) {
+                    log.error("createEvent: Invalid status provided: {}", rawStatus);
                     throw new IllegalArgumentException("Invalid event status: " + statusStr);
                 }
             }
         }
 
         EventEntity saved = eventRepository.save(e);
+        log.info("createEvent: created eventId={} name={}", saved.getId(), saved.getName());
         return toApi(saved);
     }
 
     @Transactional(readOnly = true)
-    public EventListResponse listEvents(
-            UUID domainId,
-            UUID seriesId,
-            UUID teamId,
-            LocalDate fromDate,
-            LocalDate toDate,
-            String statusStr,
-            Integer limit,
-            String cursor
-    ) {
-        // Validate domain
+    public EventListResponse listEvents(UUID domainId,
+                                        UUID seriesId,
+                                        UUID teamId,
+                                        LocalDate fromDate,
+                                        LocalDate toDate,
+                                        String statusStr,
+                                        Integer limit,
+                                        String cursor) {
+        log.info("listEvents: domainId={}, seriesId={}, teamId={}, fromDate={}, toDate={}, status={}, limit={}, cursor={}",
+                domainId, seriesId, teamId, fromDate, toDate, statusStr, limit, cursor);
+
         if (!domainRepository.existsById(domainId)) {
+            log.error("listEvents: Domain not found: {}", domainId);
             throw new EntityNotFoundException("Domain not found: " + domainId);
         }
 
@@ -108,16 +125,18 @@ public class EventsService {
 
         EventStatus status = null;
         if (statusStr != null && !statusStr.isBlank()) {
-            status = EventStatus.valueOf(statusStr.trim().toUpperCase(Locale.ROOT));
+            try {
+                status = EventStatus.valueOf(statusStr.trim().toUpperCase(Locale.ROOT));
+            } catch (IllegalArgumentException ex) {
+                log.warn("listEvents: Invalid status filter ignored: {}", statusStr);
+            }
         }
 
         OffsetDateTime fromTs = (fromDate == null) ? null : fromDate.atStartOfDay().atOffset(ZoneOffset.UTC);
-        // treat toDate as inclusive date in UI -> convert to exclusive start-of-next-day
         OffsetDateTime toTs = (toDate == null) ? null : toDate.plusDays(1).atStartOfDay().atOffset(ZoneOffset.UTC);
 
         CursorParts cp = decodeCursor(cursor);
 
-        // NOTE: teamId filter is ignored until EventParticipants mapping exists
         List<EventEntity> rows = eventRepository.searchSchedule(
                 domainId,
                 seriesId,
@@ -126,16 +145,13 @@ public class EventsService {
                 toTs,
                 cp.cursorTime,
                 cp.cursorId,
-                PageRequest.of(0, pageSize + 1) // fetch one extra to detect hasMore
+                PageRequest.of(0, pageSize + 1)
         );
 
         boolean hasMore = rows.size() > pageSize;
-        if (hasMore) {
-            rows = rows.subList(0, pageSize);
-        }
+        if (hasMore) rows = rows.subList(0, pageSize);
 
         List<Event> items = rows.stream().map(this::toApi).toList();
-
         String nextCursor = null;
         if (hasMore && !rows.isEmpty()) {
             EventEntity last = rows.get(rows.size() - 1);
@@ -146,23 +162,30 @@ public class EventsService {
         resp.setItems(items);
         resp.setHasMore(hasMore);
         resp.setNextCursor(JsonNullable.of(nextCursor));
+
+        log.info("listEvents: returned {} items, hasMore={}", items.size(), hasMore);
         return resp;
     }
 
     @Transactional(readOnly = true)
     public EventPageResponse getEventPage(UUID domainId, UUID eventId) {
+        log.info("getEventPage: domainId={}, eventId={}", domainId, eventId);
+
         EventEntity e = eventRepository.findByIdAndDomain_Id(eventId, domainId)
-                .orElseThrow(() -> new IllegalArgumentException("Event not found in domain: " + eventId));
+                .orElseThrow(() -> {
+                    log.error("getEventPage: Event not found in domain: {} {}", domainId, eventId);
+                    return new EntityNotFoundException("Event not found in domain: " + eventId);
+                });
 
         EventPageResponse page = new EventPageResponse();
-
         copyEventFields(page, e);
 
-        // Stored in internalProperties under "scorecard"
         Map<String,Object> scorecardObj = (Map<String,Object>) e.getInternalProperties().get("scorecard");
         if (scorecardObj != null) {
             page.setScorecard(scorecardObj);
-        } else page.setScorecard(new HashMap<>());
+        } else {
+            page.setScorecard(new HashMap<>());
+        }
 
         List<EventParticipantEntity> participants =
                 eventParticipantRepository.findByEvent_IdOrderByCreatedAtAsc(eventId);
@@ -170,27 +193,19 @@ public class EventsService {
         List<ai.ozzu.api.generated.model.LineupEntry> lineup = participants.stream()
                 .map(ep -> {
                     ai.ozzu.api.generated.model.LineupEntry li = new ai.ozzu.api.generated.model.LineupEntry();
-
-                    // ParticipantTypeEnum vs JsonNullable
                     LineupEntry.ParticipantTypeEnum type = (ep.getPlayer() != null)
                             ? LineupEntry.ParticipantTypeEnum.PLAYER
                             : LineupEntry.ParticipantTypeEnum.TEAM;
                     li.setParticipantType(type);
-
-                    // ID as UUID
                     UUID pid = (ep.getPlayer() != null)
                             ? ep.getPlayer().getId()
                             : ep.getTeam().getId();
                     li.setParticipantId(pid);
-
-                    // Role (String)
                     li.setRole(ep.getRole());
-
-                    // internalProperties is a Map<String,Object>
                     li.setInternalProperties(ep.getInternalProperties());
-
                     return li;
-                }).toList();
+                })
+                .toList();
 
         page.setLineup(lineup);
 
@@ -199,6 +214,8 @@ public class EventsService {
             page.setMyWagerSummary(mySummary);
         }
 
+        log.info("getEventPage: built page for eventId={} with {} lineup entries",
+                eventId, lineup.size());
         return page;
     }
 
@@ -209,7 +226,6 @@ public class EventsService {
     }
 
     private void copyEventFields(Object apiObj, EventEntity e) {
-        // Works for both Event and EventPageResponse because both have same setters in generated code.
         if (apiObj instanceof Event api) {
             fill(api, e);
         } else if (apiObj instanceof EventPageResponse page) {
@@ -268,8 +284,8 @@ public class EventsService {
             OffsetDateTime t = OffsetDateTime.parse(parts[0]);
             UUID id = UUID.fromString(parts[1]);
             return new CursorParts(t, id);
-        } catch (Exception e) {
-            // Treat invalid cursor as "no cursor" (or throw 400 if you prefer strictness)
+        } catch (Exception ex) {
+            log.warn("decodeCursor: invalid cursor '{}', treating as empty", cursor);
             return new CursorParts(null, null);
         }
     }

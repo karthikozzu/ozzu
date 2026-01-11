@@ -11,11 +11,11 @@ import ai.ozzu.api.persistence.entity.TeamEntity;
 import ai.ozzu.api.persistence.repo.DomainRepository;
 import ai.ozzu.api.persistence.repo.SeriesRepository;
 import ai.ozzu.api.persistence.repo.TeamRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.OffsetDateTime;
-import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -23,11 +23,17 @@ import java.util.UUID;
 @Service
 public class TeamsService {
 
+    private static final Logger log = LoggerFactory.getLogger(TeamsService.class);
+
     private final TeamRepository teamRepository;
     private final DomainRepository domainRepository;
     private final SeriesRepository seriesRepository;
 
-    public TeamsService(TeamRepository teamRepository, DomainRepository domainRepository, SeriesRepository seriesRepository) {
+    public TeamsService(
+            TeamRepository teamRepository,
+            DomainRepository domainRepository,
+            SeriesRepository seriesRepository
+    ) {
         this.teamRepository = teamRepository;
         this.domainRepository = domainRepository;
         this.seriesRepository = seriesRepository;
@@ -35,32 +41,49 @@ public class TeamsService {
 
     @Transactional(readOnly = true)
     public List<Team> listTeamsInSeries(UUID domainId, UUID seriesId) {
+        log.info("Listing teams in series: domainId={}, seriesId={}", domainId, seriesId);
+
         ensureDomainExists(domainId);
         ensureSeriesInDomain(domainId, seriesId);
 
-        return teamRepository.findByDomain_IdAndSeries_IdOrderByCreatedAtDesc(domainId, seriesId)
+        List<Team> teams = teamRepository
+                .findByDomain_IdAndSeries_IdOrderByCreatedAtDesc(domainId, seriesId)
                 .stream()
                 .map(this::toApi)
                 .toList();
+
+        log.info("Found {} teams in series: domainId={}, seriesId={}", teams.size(), domainId, seriesId);
+        return teams;
     }
 
     @Transactional
     public Team createTeam(UUID domainId, UUID seriesId, TeamCreateRequest req) {
+        log.info("Creating team: domainId={}, seriesId={}, request={}", domainId, seriesId, req);
+
         DomainEntity domain = domainRepository.findById(domainId)
-                .orElseThrow(() -> new EntityNotFoundException("Domain not found: " + domainId));
+                .orElseThrow(() -> {
+                    log.warn("Domain not found while creating team: domainId={}", domainId);
+                    return new EntityNotFoundException("Domain not found: " + domainId);
+                });
 
         SeriesEntity series = seriesRepository.findByIdAndDomain_Id(seriesId, domainId)
-                .orElseThrow(() -> new EntityNotFoundException("Series not found in domain: " + seriesId));
+                .orElseThrow(() -> {
+                    log.warn("Series not found in domain while creating team: domainId={}, seriesId={}",
+                            domainId, seriesId);
+                    return new EntityNotFoundException("Series not found in domain: " + seriesId);
+                });
 
         if (req == null || req.getName() == null || req.getName().isBlank()) {
+            log.warn("Missing team name: domainId={}, seriesId={}", domainId, seriesId);
             throw new MissingFieldException("Team name is required");
         }
 
         String name = req.getName().trim();
 
-        // domain-level uniqueness per your DB constraint (domain_id, name)
+        // Domain-level uniqueness (domain_id, name)
         teamRepository.findByDomain_IdAndName(domainId, name)
                 .ifPresent(t -> {
+                    log.warn("Duplicate team creation attempt: domainId={}, name={}", domainId, name);
                     throw new EntityAlreadyExistsException("Team already exists in domain: " + name);
                 });
 
@@ -68,14 +91,27 @@ public class TeamsService {
         entity.setDomain(domain);
         entity.setSeries(series);
         entity.setName(name);
-        entity.setInternalProperties(req.getInternalProperties() != null ? req.getInternalProperties() : Map.of());
+        entity.setInternalProperties(
+                req.getInternalProperties() != null ? req.getInternalProperties() : Map.of()
+        );
 
         TeamEntity saved = teamRepository.save(entity);
+
+        log.info(
+                "Team created successfully: teamId={}, domainId={}, seriesId={}, name={}",
+                saved.getId(),
+                domainId,
+                seriesId,
+                saved.getName()
+        );
+
         return toApi(saved);
     }
 
     @Transactional(readOnly = true)
     public List<Team> listTeamsForDomain(UUID domainId, UUID seriesId) {
+        log.info("Listing teams for domain: domainId={}, seriesId={}", domainId, seriesId);
+
         ensureDomainExists(domainId);
 
         List<TeamEntity> entities;
@@ -86,23 +122,33 @@ public class TeamsService {
             entities = teamRepository.findByDomain_IdAndSeries_IdOrderByCreatedAtDesc(domainId, seriesId);
         }
 
-        return entities.stream().map(this::toApi).toList();
+        List<Team> teams = entities.stream()
+                .map(this::toApi)
+                .toList();
+
+        log.info("Found {} teams for domain: domainId={}, seriesId={}",
+                teams.size(), domainId, seriesId);
+
+        return teams;
     }
 
     private void ensureDomainExists(UUID domainId) {
         if (!domainRepository.existsById(domainId)) {
+            log.warn("Domain not found: domainId={}", domainId);
             throw new IllegalArgumentException("Domain not found: " + domainId);
         }
     }
 
     private void ensureSeriesInDomain(UUID domainId, UUID seriesId) {
         if (!seriesRepository.findByIdAndDomain_Id(seriesId, domainId).isPresent()) {
+            log.warn("Series not found in domain: domainId={}, seriesId={}", domainId, seriesId);
             throw new EntityNotFoundException("Series not found in domain: " + seriesId);
         }
     }
 
-
     private Team toApi(TeamEntity e) {
+        log.debug("Mapping TeamEntity to API model: teamId={}", e.getId());
+
         Team t = new Team();
         t.setId(e.getId());
         t.setDomainId(e.getDomain() != null ? e.getDomain().getId() : null);

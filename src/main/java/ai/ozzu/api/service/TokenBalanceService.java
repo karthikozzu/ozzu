@@ -5,6 +5,8 @@ import ai.ozzu.api.generated.model.TokenBalanceResponse;
 import ai.ozzu.api.persistence.repo.TokenLedgerRepository;
 import ai.ozzu.api.persistence.repo.UserRepository;
 import ai.ozzu.api.persistence.repo.UserTokenBalanceRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -16,12 +18,17 @@ import java.util.UUID;
 @Service
 public class TokenBalanceService {
 
+    private static final Logger log = LoggerFactory.getLogger(TokenBalanceService.class);
+
     private final UserRepository userRepository;
     private final UserTokenBalanceRepository userTokenBalanceRepository;
     private final TokenLedgerRepository tokenLedgerRepository;
 
-    public TokenBalanceService(UserRepository userRepository, UserTokenBalanceRepository userTokenBalanceRepository,
-                               TokenLedgerRepository tokenLedgerRepository) {
+    public TokenBalanceService(
+            UserRepository userRepository,
+            UserTokenBalanceRepository userTokenBalanceRepository,
+            TokenLedgerRepository tokenLedgerRepository
+    ) {
         this.userRepository = userRepository;
         this.userTokenBalanceRepository = userTokenBalanceRepository;
         this.tokenLedgerRepository = tokenLedgerRepository;
@@ -34,13 +41,24 @@ public class TokenBalanceService {
      */
     @Transactional(readOnly = true)
     public TokenBalanceResponse getTokenBalance(UUID userId) {
+        log.info("Fetching token balance for userId={}", userId);
+
         ensureUserExists(userId);
 
         BalanceResult result = resolveBalance(userId);
 
+        int safeBalance = (int) Math.min(Integer.MAX_VALUE, Math.max(0, result.balance));
+
+        log.info(
+                "Resolved token balance for userId={} balance={} source={}",
+                userId,
+                safeBalance,
+                result.source
+        );
+
         TokenBalanceResponse resp = new TokenBalanceResponse();
         resp.setUserId(userId);
-        resp.setBalanceTokens((int) Math.min(Integer.MAX_VALUE, Math.max(0, result.balance)));
+        resp.setBalanceTokens(safeBalance);
 
         // Optional internalProperties (safe + useful for debugging)
         Map<String, Object> ip = new LinkedHashMap<>();
@@ -54,15 +72,29 @@ public class TokenBalanceService {
     private BalanceResult resolveBalance(UUID userId) {
         // Try balance table first
         return userTokenBalanceRepository.findById(userId)
-                .map(b -> new BalanceResult(b.getBalance() == 0 ? 0L : b.getBalance(), "user_token_balances"))
+                .map(b -> {
+                    long balance = b.getBalance() == 0 ? 0L : b.getBalance();
+                    log.debug(
+                            "Token balance resolved from user_token_balances: userId={} balance={}",
+                            userId,
+                            balance
+                    );
+                    return new BalanceResult(balance, "user_token_balances");
+                })
                 .orElseGet(() -> {
-                    long ledgerSum = tokenLedgerRepository.getBalance(userId); // your repo already has this
+                    long ledgerSum = tokenLedgerRepository.getBalance(userId);
+                    log.debug(
+                            "Token balance resolved via ledger fallback: userId={} ledgerSum={}",
+                            userId,
+                            ledgerSum
+                    );
                     return new BalanceResult(ledgerSum, "token_ledger_sum_fallback");
                 });
     }
 
     private void ensureUserExists(UUID userId) {
         if (!userRepository.existsById(userId)) {
+            log.warn("User not found while fetching token balance: userId={}", userId);
             throw new EntityNotFoundException("User not found: " + userId);
         }
     }

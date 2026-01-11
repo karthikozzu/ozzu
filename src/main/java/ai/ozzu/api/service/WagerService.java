@@ -1,11 +1,14 @@
 package ai.ozzu.api.service;
 
+import ai.ozzu.api.exceptions.BadRequestException;
+import ai.ozzu.api.exceptions.MissingFieldException;
 import ai.ozzu.api.generated.model.Wager;
 import ai.ozzu.api.generated.model.WagerCardBindingPickRequest;
 import ai.ozzu.api.generated.model.WagerCreateRequest;
 import ai.ozzu.api.generated.model.WagerNarrativeDetail;
 import ai.ozzu.api.generated.model.WagerReferentBindingRequest;
 import ai.ozzu.api.persistence.entity.*;
+import ai.ozzu.api.persistence.enums.WagerStatus;
 import ai.ozzu.api.persistence.repo.*;
 import ai.ozzu.api.utils.CursorHelper;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -46,6 +49,7 @@ public class WagerService {
     private final DomainRepository domainRepo;
 
     private final TokenLedgerService tokenLedgerService;
+    private final WagerStatusService wagerStatusService;
     private final ObjectMapper objectMapper;
 
     public WagerService(
@@ -61,6 +65,7 @@ public class WagerService {
             UserRepository userRepo,
             DomainRepository domainRepo,
             TokenLedgerService tokenLedgerService,
+            WagerStatusService wagerStatusService,
             ObjectMapper objectMapper
     ) {
         this.eventRepo = eventRepo;
@@ -78,6 +83,7 @@ public class WagerService {
         this.domainRepo = domainRepo;
 
         this.tokenLedgerService = tokenLedgerService;
+        this.wagerStatusService = wagerStatusService;
         this.objectMapper = objectMapper;
     }
 
@@ -93,6 +99,14 @@ public class WagerService {
         return create(domainId, eventId, userId, idemKey, req);
     }
 
+    /**
+     * Canonical flow:
+     *  1) Create wager row (status CREATED)
+     *  2) Build wager cards + bindings
+     *  3) Debit tokens once (idempotent)
+     *     - success: CREATED -> PLACED
+     *     - failure: CREATED -> CANCELED (and rethrow)
+     */
     @Transactional
     public Wager create(UUID domainId, UUID eventId, UUID userId, String idemKey, WagerCreateRequest req) {
 
@@ -116,7 +130,7 @@ public class WagerService {
                 (req != null && req.getName() != null && !req.getName().isBlank()),
                 (req != null && req.getWagerNarrativeDetails() != null ? req.getWagerNarrativeDetails().size() : 0));
 
-        // 1) Create wager
+        // 1) Create wager (CREATED)
         WagerEntity w = new WagerEntity();
         w.setEventId(eventId);
         w.setDomainId(domainId);
@@ -124,7 +138,23 @@ public class WagerService {
         w.setName(req == null ? null : req.getName());
         w.setStakeTokens(stake);
 
+        // IMPORTANT: make sure initial status is explicitly set (avoids null oldStatus)
+        w.setStatus(WagerStatus.CREATED);
+
         w = wagerRepo.save(w);
+
+        // Record creation event (safe + idempotent)
+        wagerStatusService.changeWagerStatus(
+                eventId,
+                w.getId(),
+                WagerStatus.CREATED,
+                userId,
+                "wager_created",
+                Map.of(
+                        "stakeTokens", stake,
+                        "idemKeyPresent", (idemKey != null && !idemKey.isBlank())
+                )
+        );
 
         // 2) Create wager cards + bindings (and lock odds per binding)
         if (req != null && req.getWagerNarrativeDetails() != null) {
@@ -178,6 +208,7 @@ public class WagerService {
                         }
 
                         b.setEntityLabel(pick.getEntityLabel());
+
                         // If this is a direct pick (no scoped referent), DB requires entity_type NOT NULL
                         if (b.getScopedReferent() == null) {
                             if (b.getEntityType() == null) {
@@ -186,12 +217,13 @@ public class WagerService {
                                 } else if (b.getPlayer() != null) {
                                     b.setEntityType("PLAYER");
                                 } else if (b.getEntityLabel() != null && !b.getEntityLabel().isBlank()) {
-                                    b.setEntityType("LABEL"); // <-- your current test case: "Team A"
+                                    b.setEntityType("LABEL"); // e.g. "Team A"
                                 } else {
                                     throw new IllegalArgumentException("Invalid binding: must provide scopedReferentId OR (entityType + one of team/player/label)");
                                 }
                             }
                         }
+
                         Map<String, Object> payload = toMap(pick.getPickPayload());
                         b.setPickPayload(payload);
 
@@ -207,19 +239,93 @@ public class WagerService {
             }
         }
 
-        // 3) Token debit (idempotent)
-        tokenLedgerService.debitStakeOnce(user, domain, event, w, stake, idemKey);
+        // 3) Token debit (idempotent) + status transition
+        try {
+            tokenLedgerService.debitStakeOnce(user, domain, event, w, stake, idemKey);
 
-        log.info("wager.create.success domainId={} eventId={} wagerId={} userId={} stakeTokens={}",
-                domainId, eventId, w.getId(), userId, stake);
-        return new Wager()
-                .id(w.getId())
-                .domainId(w.getDomainId())
-                .eventId(w.getEventId())
-                .userId(w.getUserId())
-                .name(w.getName())
-                .stakeTokens(w.getStakeTokens())
-                .payoutTokens(w.getPayoutTokens());
+            wagerStatusService.changeWagerStatus(
+                    eventId,
+                    w.getId(),
+                    WagerStatus.PLACED,
+                    userId,
+                    "stake_debited",
+                    Map.of("stakeTokens", stake)
+            );
+
+            log.info("wager.create.success domainId={} eventId={} wagerId={} userId={} stakeTokens={}",
+                    domainId, eventId, w.getId(), userId, stake);
+
+        } catch (RuntimeException ex) {
+            // If debit fails, cancel wager (CREATED -> CANCELED)
+            try {
+                wagerStatusService.changeWagerStatus(
+                        eventId,
+                        w.getId(),
+                        WagerStatus.CANCELED,
+                        userId,
+                        "stake_debit_failed",
+                        Map.of(
+                                "stakeTokens", stake,
+                                "errorType", ex.getClass().getSimpleName()
+                        )
+                );
+            } catch (RuntimeException statusEx) {
+                // We never want to mask the original debit failure.
+                log.error("wager.create.debitFailed.statusCancelFailed eventId={} wagerId={} userId={} error={}",
+                        eventId, w.getId(), userId, statusEx.toString(), statusEx);
+            }
+
+            log.warn("wager.create.debitFailed domainId={} eventId={} wagerId={} userId={} stakeTokens={} error={}",
+                    domainId, eventId, w.getId(), userId, stake, ex.toString());
+
+            throw ex;
+        }
+
+        return toApiModel(w);
+    }
+
+    @Transactional(readOnly = true)
+    public PageResult<Wager> getWagersPaginated(UUID domainId, Integer limit, String cursor) {
+        int effectiveLimit = (limit == null || limit <= 0) ? 20 : limit;
+
+        log.info("wager.listPaginated domainId={} limit={} cursorPresent={}",
+                domainId, effectiveLimit, (cursor != null && !cursor.isBlank()));
+
+        Pageable pageable = PageRequest.of(0, effectiveLimit + 1); // fetch one extra to detect hasMore
+
+        List<WagerEntity> entityPage;
+
+        if (cursor != null && !cursor.isBlank()) {
+            var decoded = CursorHelper.decode(cursor);
+            entityPage = wagerRepo.findByDomainIdAfterCursor(
+                    domainId,
+                    decoded.getFirst(),
+                    decoded.getSecond(),
+                    pageable
+            );
+        } else {
+            entityPage = wagerRepo.findByDomainIdOrderByCreatedAtDesc(domainId, pageable);
+        }
+
+        boolean hasMore = entityPage.size() > effectiveLimit;
+        if (hasMore) {
+            entityPage = entityPage.subList(0, effectiveLimit);
+        }
+
+        List<Wager> items = entityPage.stream()
+                .map(this::toApiModel)
+                .collect(Collectors.toList());
+
+        String nextCursor = null;
+        if (hasMore && !entityPage.isEmpty()) {
+            WagerEntity last = entityPage.get(entityPage.size() - 1);
+            nextCursor = CursorHelper.encode(last.getCreatedAt(), last.getId());
+        }
+
+        log.info("wager.listPaginated.result domainId={} returned={} hasMore={} nextCursorPresent={}",
+                domainId, items.size(), hasMore, (nextCursor != null));
+
+        return new PageResult<>(items, nextCursor, hasMore);
     }
 
     private Wager toApiModel(WagerEntity w) {
@@ -251,10 +357,48 @@ public class WagerService {
 
     private UUID currentUserId() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        if (auth == null || auth.getPrincipal() == null) {
-            throw new IllegalStateException("Missing auth context");
+
+        if (auth == null || !auth.isAuthenticated()) {
+            throw new MissingFieldException("Missing auth context");
         }
-        return UUID.fromString("b290d168-287a-42f2-a062-44ce6bff8912");
+
+        Object principal = auth.getPrincipal();
+        if (principal == null) {
+            throw new MissingFieldException("Missing auth principal");
+        }
+
+        // Your JwtAuthFilter sets principal = userId (String)
+        if (principal instanceof String s) {
+            if (s.isBlank()) {
+                throw new MissingFieldException("Missing userId in auth principal");
+            }
+            try {
+                return UUID.fromString(s.trim());
+            } catch (IllegalArgumentException e) {
+                throw new BadRequestException("Invalid userId in auth principal");
+            }
+        }
+
+        // If later you switch to UserDetails / custom principal
+        if (principal instanceof org.springframework.security.core.userdetails.UserDetails ud) {
+            String username = ud.getUsername();
+            try {
+                return UUID.fromString(username);
+            } catch (Exception e) {
+                throw new BadRequestException("Invalid userId in auth principal");
+            }
+        }
+
+        // Fallback: auth.getName() sometimes contains subject/username
+        String name = auth.getName();
+        if (name != null && !name.isBlank()) {
+            try {
+                return UUID.fromString(name.trim());
+            } catch (IllegalArgumentException e) {
+                // ignore; fall through
+            }
+        }
+        throw new BadRequestException("Unable to resolve userId from auth context");
     }
 
     @SuppressWarnings("unchecked")
@@ -294,44 +438,4 @@ public class WagerService {
             String nextCursor,
             boolean hasMore
     ) {}
-
-    public PageResult<Wager> getWagersPaginated(
-            UUID domainId,
-            Integer limit,
-            String cursor
-    ) {
-        Pageable pageable = PageRequest.of(0, limit);
-
-        List<WagerEntity> entityPage;
-
-        if (cursor != null) {
-            var decoded = CursorHelper.decode(cursor);
-            entityPage = wagerRepo.findByDomainIdAfterCursor(
-                    domainId,
-                    decoded.getFirst(),
-                    decoded.getSecond(),
-                    pageable
-            );
-        } else {
-            entityPage = wagerRepo.findByDomainIdOrderByCreatedAtDesc(domainId, pageable);
-        }
-
-        // If we got one more than limit => hasMore
-        boolean hasMore = entityPage.size() > limit;
-        if (hasMore) {
-            entityPage = entityPage.subList(0, limit);
-        }
-
-        List<Wager> items = entityPage.stream()
-                .map(this::toApiModel)
-                .collect(Collectors.toList());
-
-        String nextCursor = null;
-        if (hasMore) {
-            WagerEntity last = entityPage.get(entityPage.size() - 1);
-            nextCursor = CursorHelper.encode(last.getCreatedAt(), last.getId());
-        }
-
-        return new PageResult<>(items, nextCursor, hasMore);
-    }
 }
