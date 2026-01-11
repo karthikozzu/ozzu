@@ -7,8 +7,10 @@ import java.util.List;
 import java.util.UUID;
 
 public interface ScopedReferentRepository extends JpaRepository<ScopedReferentEntity, UUID> {
-  List<ScopedReferentEntity> findByEvent_Id(UUID eventId);
-  List<ScopedReferentEntity> findByDomain_Id(UUID domainId);
 
   List<ScopedReferentEntity> findByEventIdAndConceptTermId(UUID eventId, UUID conceptTermId);
+
+  List<ScopedReferentEntity> findByEvent_Id(UUID eventId);
+  List<ScopedReferentEntity> findByDomain_Id(UUID domainId);
+  List<ScopedReferentEntity> findByEvent_IdAndConceptTerm_Id(UUID eventId, UUID conceptTermId);
 }

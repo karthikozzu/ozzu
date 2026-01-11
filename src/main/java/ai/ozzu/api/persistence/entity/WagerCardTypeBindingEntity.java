@@ -73,4 +73,32 @@ public class WagerCardTypeBindingEntity {
     public UUID getId() {
         return id;
     }
+
+    public void setDomain(DomainEntity domain) {
+        this.domain = domain;
+    }
+
+    public void setWagerCardType(WagerCardTypeEntity wagerCardType) {
+        this.wagerCardType = wagerCardType;
+    }
+
+    public void setConceptTerm(ConceptTermEntity conceptTerm) {
+        this.conceptTerm = conceptTerm;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
+    }
+
+    public void setInternalProperties(Map<String, Object> internalProperties) {
+        this.internalProperties = internalProperties;
+    }
+
+    public OffsetDateTime getCreatedAt() {
+        return createdAt;
+    }
+
+    public void setCreatedAt(OffsetDateTime createdAt) {
+        this.createdAt = createdAt;
+    }
 }

@@ -46,4 +46,56 @@ public class RelationshipEntity extends AuditedEntity {
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name="internal_properties", nullable=false, columnDefinition="jsonb")
     private Map<String, Object> internalProperties = Map.of();
+
+    public UUID getId() {
+        return id;
+    }
+
+    public DomainEntity getDomain() {
+        return domain;
+    }
+
+    public void setDomain(DomainEntity domain) {
+        this.domain = domain;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public boolean isDefining() {
+        return defining;
+    }
+
+    public void setDefining(boolean defining) {
+        this.defining = defining;
+    }
+
+    public ConceptTermEntity getFromConcept() {
+        return fromConcept;
+    }
+
+    public void setFromConcept(ConceptTermEntity fromConcept) {
+        this.fromConcept = fromConcept;
+    }
+
+    public ConceptTermEntity getToConcept() {
+        return toConcept;
+    }
+
+    public void setToConcept(ConceptTermEntity toConcept) {
+        this.toConcept = toConcept;
+    }
+
+    public Map<String, Object> getInternalProperties() {
+        return internalProperties;
+    }
+
+    public void setInternalProperties(Map<String, Object> internalProperties) {
+        this.internalProperties = internalProperties;
+    }
 }

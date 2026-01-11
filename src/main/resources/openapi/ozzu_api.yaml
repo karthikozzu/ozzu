@@ -403,6 +403,39 @@ paths:
               schema:
                 $ref: "#/components/schemas/ConceptTerm"
 
+    get:
+      tags: [ Concepts ]
+      summary: List concept terms for domain
+      parameters:
+        - $ref: "#/components/parameters/DomainId"
+      responses:
+        "200":
+          description: Concept terms list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ConceptTerm"
+
+  /ozzu/domains/{domainId}/conceptTerms/{conceptTermId}:
+    get:
+      tags: [ Concepts ]
+      summary: Get a concept term by id
+      parameters:
+        - $ref: "#/components/parameters/DomainId"
+        - name: conceptTermId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Concept term
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConceptTerm"
+
   /ozzu/domains/{domainId}/relationships:
     post:
       tags: [Concepts]
@@ -537,6 +570,35 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/WagerCardType"
+    get:
+      tags: [ WagerCardsLCM ]
+      summary: List wager card types (templates) for domain
+      parameters:
+        - $ref: "#/components/parameters/DomainId"
+      responses:
+        "200":
+          description: Wager card types list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/WagerCardType"
+
+  /ozzu/domains/{domainId}/wagerCards/{wagerCardTypeId}:
+    get:
+      tags: [ WagerCardsLCM ]
+      summary: Get wager card type detail
+      parameters:
+        - $ref: "#/components/parameters/DomainId"
+        - $ref: "#/components/parameters/WagerCardTypeId"
+      responses:
+        "200":
+          description: Wager card type
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WagerCardType"
 
   /ozzu/domains/{domainId}/wagerCards/{wagerCardTypeId}/bindings:
     post:
@@ -558,6 +620,21 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/WagerCardTypeBinding"
+    get:
+      tags: [ WagerCardsLCM ]
+      summary: List bindings for a wager card type
+      parameters:
+        - $ref: "#/components/parameters/DomainId"
+        - $ref: "#/components/parameters/WagerCardTypeId"
+      responses:
+        "200":
+          description: Wager card type bindings
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/WagerCardTypeBinding"
 
   /ozzu/domains/{domainId}/lounges:
     post:
@@ -904,6 +981,14 @@ components:
       in: path
       required: true
       schema: { type: string, format: uuid }
+
+    ConceptTermId:
+      name: conceptTermId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
 
     TeamId:
       name: teamId

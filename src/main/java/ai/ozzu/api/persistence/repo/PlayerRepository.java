@@ -17,4 +17,6 @@ public interface PlayerRepository extends JpaRepository<PlayerEntity, UUID> {
   Optional<PlayerEntity> findByDomain_IdAndName(UUID domainId, String name);
 
   Optional<PlayerEntity> findByIdAndDomain_Id(UUID playerId, UUID domainId);
+
+  boolean existsByIdAndDomain_Id(UUID playerId, UUID domainId);
 }

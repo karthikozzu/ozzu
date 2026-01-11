@@ -11,4 +11,7 @@ public interface EventParticipantRepository extends JpaRepository<EventParticipa
 
   List<EventParticipantEntity> findByEvent_IdOrderByCreatedAtAsc(UUID eventId);
 
+  boolean existsByEvent_IdAndPlayer_Id(UUID eventId, UUID playerId);
+  boolean existsByEvent_IdAndTeam_Id(UUID eventId, UUID teamId);
+
 }

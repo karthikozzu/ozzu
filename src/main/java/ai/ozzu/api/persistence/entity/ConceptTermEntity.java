@@ -58,4 +58,20 @@ public class ConceptTermEntity extends AuditedEntity {
     public Map<String, Object> getInternalProperties() {
         return internalProperties;
     }
+
+    public void setDomain(DomainEntity domain) {
+        this.domain = domain;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public void setParent(ConceptTermEntity parent) {
+        this.parent = parent;
+    }
+
+    public void setInternalProperties(Map<String, Object> internalProperties) {
+        this.internalProperties = internalProperties;
+    }
 }

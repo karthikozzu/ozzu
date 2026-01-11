@@ -20,6 +20,8 @@ public interface EventRepository extends JpaRepository<EventEntity, UUID> {
 
   Optional<EventEntity> findByIdAndDomain_Id(UUID eventId, UUID domainId);
 
+  boolean existsByIdAndDomain_Id(UUID eventId, UUID domainId);
+
   // Schedule list with optional filters + cursor.
   // Cursor is (timeEventStart, id) with lexicographic comparison.
   @Query("""

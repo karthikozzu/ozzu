@@ -136,4 +136,64 @@ public class ScopedReferentEntity extends AuditedEntity {
     public UUID getId() {
         return id;
     }
+
+    public void setDomain(DomainEntity domain) {
+        this.domain = domain;
+    }
+
+    public void setEvent(EventEntity event) {
+        this.event = event;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public void setGroupAffiliation(String groupAffiliation) {
+        this.groupAffiliation = groupAffiliation;
+    }
+
+    public void setGenerated(boolean generated) {
+        this.generated = generated;
+    }
+
+    public void setConceptTerm(ConceptTermEntity conceptTerm) {
+        this.conceptTerm = conceptTerm;
+    }
+
+    public void setEntityType(String entityType) {
+        this.entityType = entityType;
+    }
+
+    public void setPlayer(PlayerEntity player) {
+        this.player = player;
+    }
+
+    public void setTeam(TeamEntity team) {
+        this.team = team;
+    }
+
+    public void setEntityLabel(String entityLabel) {
+        this.entityLabel = entityLabel;
+    }
+
+    public void setPointsValue(int pointsValue) {
+        this.pointsValue = pointsValue;
+    }
+
+    public void setOptional(boolean optional) {
+        this.optional = optional;
+    }
+
+    public void setEventConstrained(boolean eventConstrained) {
+        this.eventConstrained = eventConstrained;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
+    }
+
+    public void setInternalProperties(Map<String, Object> internalProperties) {
+        this.internalProperties = internalProperties;
+    }
 }

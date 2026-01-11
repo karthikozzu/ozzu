@@ -33,4 +33,40 @@ public class WagerCardTypeEntity extends AuditedEntity {
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name="internal_properties", nullable=false, columnDefinition="jsonb")
     private Map<String, Object> internalProperties = Map.of();
+
+    public UUID getId() {
+        return id;
+    }
+
+    public DomainEntity getDomain() {
+        return domain;
+    }
+
+    public void setDomain(DomainEntity domain) {
+        this.domain = domain;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
+    }
+
+    public Map<String, Object> getInternalProperties() {
+        return internalProperties;
+    }
+
+    public void setInternalProperties(Map<String, Object> internalProperties) {
+        this.internalProperties = internalProperties;
+    }
 }

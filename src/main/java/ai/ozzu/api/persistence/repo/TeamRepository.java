@@ -24,4 +24,6 @@ public interface TeamRepository extends JpaRepository<TeamEntity, UUID> {
   Optional<TeamEntity> findByIdAndDomain_Id(UUID id, UUID domainId);
 
   Optional<TeamEntity> findByIdAndDomain_IdAndSeries_Id(UUID id, UUID domainId, UUID seriesId);
+
+  boolean existsByIdAndDomain_Id(UUID teamId, UUID domainId);
 }
