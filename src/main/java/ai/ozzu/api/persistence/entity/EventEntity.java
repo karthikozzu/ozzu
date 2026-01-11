@@ -99,4 +99,52 @@ public class EventEntity extends AuditedEntity {
     public Map<String, Object> getInternalProperties() {
         return internalProperties;
     }
+
+    public UUID getId() {
+        return id;
+    }
+
+    public void setId(UUID id) {
+        this.id = id;
+    }
+
+    public void setDomain(DomainEntity domain) {
+        this.domain = domain;
+    }
+
+    public void setSeries(SeriesEntity series) {
+        this.series = series;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
+    }
+
+    public void setStatus(EventStatus status) {
+        this.status = status;
+    }
+
+    public void setTimeEventStart(OffsetDateTime timeEventStart) {
+        this.timeEventStart = timeEventStart;
+    }
+
+    public void setTimeEventEnd(OffsetDateTime timeEventEnd) {
+        this.timeEventEnd = timeEventEnd;
+    }
+
+    public void setCanceled(boolean canceled) {
+        this.canceled = canceled;
+    }
+
+    public void setCompleted(boolean completed) {
+        this.completed = completed;
+    }
+
+    public void setInternalProperties(Map<String, Object> internalProperties) {
+        this.internalProperties = internalProperties;
+    }
 }

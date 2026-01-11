@@ -8,4 +8,7 @@ import java.util.UUID;
 
 public interface EventParticipantRepository extends JpaRepository<EventParticipantEntity, UUID> {
   List<EventParticipantEntity> findByEvent_Id(UUID eventId);
+
+  List<EventParticipantEntity> findByEvent_IdOrderByCreatedAtAsc(UUID eventId);
+
 }
