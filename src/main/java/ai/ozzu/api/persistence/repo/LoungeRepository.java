@@ -10,4 +10,5 @@ import java.util.UUID;
 public interface LoungeRepository extends JpaRepository<LoungeEntity, UUID> {
   List<LoungeEntity> findByDomain_Id(UUID domainId);
   Optional<LoungeEntity> findByDomain_IdAndName(UUID domainId, String name);
+  List<LoungeEntity> findByDomain_IdOrderByCreatedAtDesc(UUID domainId);
 }

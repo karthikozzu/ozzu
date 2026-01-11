@@ -62,4 +62,88 @@ public class LoungeMembershipEntity {
 
     @Column(name="updated_at", nullable=false)
     private OffsetDateTime updatedAt = OffsetDateTime.now();
+
+    public UUID getId() {
+        return id;
+    }
+
+    public LoungeEntity getLounge() {
+        return lounge;
+    }
+
+    public void setLounge(LoungeEntity lounge) {
+        this.lounge = lounge;
+    }
+
+    public UserEntity getUser() {
+        return user;
+    }
+
+    public void setUser(UserEntity user) {
+        this.user = user;
+    }
+
+    public LoungeMemberRole getRole() {
+        return role;
+    }
+
+    public void setRole(LoungeMemberRole role) {
+        this.role = role;
+    }
+
+    public LoungeMemberStatus getStatus() {
+        return status;
+    }
+
+    public void setStatus(LoungeMemberStatus status) {
+        this.status = status;
+    }
+
+    public UserEntity getInvitedByUser() {
+        return invitedByUser;
+    }
+
+    public void setInvitedByUser(UserEntity invitedByUser) {
+        this.invitedByUser = invitedByUser;
+    }
+
+    public OffsetDateTime getJoinedAt() {
+        return joinedAt;
+    }
+
+    public void setJoinedAt(OffsetDateTime joinedAt) {
+        this.joinedAt = joinedAt;
+    }
+
+    public OffsetDateTime getLeftAt() {
+        return leftAt;
+    }
+
+    public void setLeftAt(OffsetDateTime leftAt) {
+        this.leftAt = leftAt;
+    }
+
+    public Map<String, Object> getInternalProperties() {
+        return internalProperties;
+    }
+
+    public void setInternalProperties(Map<String, Object> internalProperties) {
+        this.internalProperties = internalProperties;
+    }
+
+    public OffsetDateTime getCreatedAt() {
+        return createdAt;
+    }
+
+    public void setCreatedAt(OffsetDateTime createdAt) {
+        this.createdAt = createdAt;
+    }
+
+    public OffsetDateTime getUpdatedAt() {
+        return updatedAt;
+    }
+
+    public void setUpdatedAt(OffsetDateTime updatedAt) {
+        this.updatedAt = updatedAt;
+    }
 }

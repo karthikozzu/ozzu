@@ -34,4 +34,40 @@ public class LoungeEntryEntity {
 
     @Column(name="left_at")
     private OffsetDateTime leftAt;
+
+    public UUID getId() {
+        return id;
+    }
+
+    public EventLoungeEntity getEventLounge() {
+        return eventLounge;
+    }
+
+    public void setEventLounge(EventLoungeEntity eventLounge) {
+        this.eventLounge = eventLounge;
+    }
+
+    public UserEntity getUser() {
+        return user;
+    }
+
+    public void setUser(UserEntity user) {
+        this.user = user;
+    }
+
+    public OffsetDateTime getJoinedAt() {
+        return joinedAt;
+    }
+
+    public void setJoinedAt(OffsetDateTime joinedAt) {
+        this.joinedAt = joinedAt;
+    }
+
+    public OffsetDateTime getLeftAt() {
+        return leftAt;
+    }
+
+    public void setLeftAt(OffsetDateTime leftAt) {
+        this.leftAt = leftAt;
+    }
 }
