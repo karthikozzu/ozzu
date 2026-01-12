@@ -53,4 +53,4 @@ karthik@Karthikeyans-MacBook-Pro ozzu % docker run --rm -p 3001:3001 \
 ozzu-api
 ```
 ## Swagger UI
-http://localhost:8080/ozzu/swagger-ui.html
+http://localhost:3001/swagger-ui.html
