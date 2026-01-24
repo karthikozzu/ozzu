@@ -1,0 +1,25 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://ozzu-dev1.cpcumeo663ii.ap-south-1.rds.amazonaws.com:5432/ozzu_dev
+    username: postgres
+    password: postgres
+    hikari:
+      pool-name: ozzu-hikari
+      maximum-pool-size: 30          # start 20–50 depending on DB CPU
+      minimum-idle: 10
+      connection-timeout: 2000       # ms (fail fast)
+      validation-timeout: 1000
+      idle-timeout: 600000           # 10 min
+      max-lifetime: 1800000          # 30 min (safe default)
+      keepalive-time: 300000         # 5 min (helps NAT/LB)
+      leak-detection-threshold: 0    # set to 10000 temporarily when debugging
+      auto-commit: false
+
+app:
+  jwt:
+    secret: "ozzu_dev_login_secret_shuqvtr3m2l69t0verkbpk98q44v02qv"
+    issuer: "ozzu"
+    ttlMinutes: 120
+
+google:
+  clientId: "129977490269-shuqvtr3m2l69t0verkbpk98q44v02qv.apps.googleusercontent.com"
