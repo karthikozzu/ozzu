@@ -63,12 +63,15 @@ public interface WagerRepository extends JpaRepository<WagerEntity, UUID> {
     List<WagerEntity> findCelebrityWagersByEventId(@Param("eventId") UUID eventId);
 
     @Query("""
-            select new map(
-                sum(case when w.status = ai.ozzu.api.persistence.enums.WagerStatus.PLACED then 1 else 0 end) as totalPlaced,
-                coalesce(sum(w.stakeTokens), 0) as totalStake
-            )
-            from WagerEntity w
-            where w.eventId = :eventId
-            """)
-    Map<String, Object> computeSummaryForEvent(@Param("eventId") UUID eventId);
+    select new map(
+        sum(case when w.status = :placed then 1 else 0 end) as totalPlaced,
+        coalesce(sum(w.stakeTokens), 0) as totalStake
+    )
+    from WagerEntity w
+    where w.eventId = :eventId
+    """)
+    Map<String, Object> computeSummaryForEvent(
+            @Param("eventId") UUID eventId,
+            @Param("placed") WagerStatus placed
+    );
 }

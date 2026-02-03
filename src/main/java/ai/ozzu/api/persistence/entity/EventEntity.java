@@ -41,6 +41,7 @@ public class EventEntity extends AuditedEntity {
     private String description;
 
     @Enumerated(EnumType.STRING)
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     @Column(nullable=false, columnDefinition="event_status")
     private EventStatus status = EventStatus.SCHEDULED;
 

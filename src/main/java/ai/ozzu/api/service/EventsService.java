@@ -11,6 +11,7 @@ import ai.ozzu.api.persistence.entity.EventEntity;
 import ai.ozzu.api.persistence.entity.EventParticipantEntity;
 import ai.ozzu.api.persistence.entity.SeriesEntity;
 import ai.ozzu.api.persistence.enums.EventStatus;
+import ai.ozzu.api.persistence.enums.WagerStatus;
 import ai.ozzu.api.persistence.repo.DomainRepository;
 import ai.ozzu.api.persistence.repo.EventParticipantRepository;
 import ai.ozzu.api.persistence.repo.EventRepository;
@@ -20,6 +21,7 @@ import org.openapitools.jackson.nullable.JsonNullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -107,12 +109,13 @@ public class EventsService {
     @Transactional(readOnly = true)
     public EventListResponse listEvents(UUID domainId,
                                         UUID seriesId,
-                                        UUID teamId,
+                                        UUID teamId, // not used yet, keep param for future
                                         LocalDate fromDate,
                                         LocalDate toDate,
                                         String statusStr,
                                         Integer limit,
                                         String cursor) {
+
         log.info("listEvents: domainId={}, seriesId={}, teamId={}, fromDate={}, toDate={}, status={}, limit={}, cursor={}",
                 domainId, seriesId, teamId, fromDate, toDate, statusStr, limit, cursor);
 
@@ -132,26 +135,51 @@ public class EventsService {
             }
         }
 
+        // Convert LocalDate filters to [fromTs, toTs) in UTC
         OffsetDateTime fromTs = (fromDate == null) ? null : fromDate.atStartOfDay().atOffset(ZoneOffset.UTC);
         OffsetDateTime toTs = (toDate == null) ? null : toDate.plusDays(1).atStartOfDay().atOffset(ZoneOffset.UTC);
 
         CursorParts cp = decodeCursor(cursor);
 
-        List<EventEntity> rows = eventRepository.searchSchedule(
-                domainId,
-                seriesId,
-                status,
-                fromTs,
-                toTs,
-                cp.cursorTime,
-                cp.cursorId,
-                PageRequest.of(0, pageSize + 1)
-        );
+        // Build specification dynamically (only add predicates when values are non-null)
+        var spec = EventSpecs.domainId(domainId);
+
+        if (seriesId != null) {
+            spec = spec.and(EventSpecs.seriesId(seriesId));
+        }
+        if (status != null) {
+            spec = spec.and(EventSpecs.status(status));
+        }
+        if (fromTs != null) {
+            spec = spec.and(EventSpecs.startGte(fromTs));
+        }
+        if (toTs != null) {
+            spec = spec.and(EventSpecs.startLt(toTs));
+        }
+
+        // Cursor filtering only if BOTH cursorTime and cursorId exist
+        if (cp.cursorTime != null && cp.cursorId != null) {
+            spec = spec.and(EventSpecs.afterCursor(cp.cursorTime, cp.cursorId));
+        }
+
+        // Sort must match your cursor order
+        var sort = org.springframework.data.domain.Sort
+                .by(org.springframework.data.domain.Sort.Direction.ASC, "timeEventStart")
+                .and(org.springframework.data.domain.Sort.by("id"));
+
+        var pageable = PageRequest.of(0, pageSize + 1, sort);
+
+        // NOTE: findAll(spec, pageable) returns Page<EventEntity>
+        var page = eventRepository.findAll(spec, pageable);
+        List<EventEntity> rows = page.getContent();
 
         boolean hasMore = rows.size() > pageSize;
-        if (hasMore) rows = rows.subList(0, pageSize);
+        if (hasMore) {
+            rows = rows.subList(0, pageSize);
+        }
 
         List<Event> items = rows.stream().map(this::toApi).toList();
+
         String nextCursor = null;
         if (hasMore && !rows.isEmpty()) {
             EventEntity last = rows.get(rows.size() - 1);
@@ -209,7 +237,7 @@ public class EventsService {
 
         page.setLineup(lineup);
 
-        Map<String, Object> mySummary = wagerRepository.computeSummaryForEvent(eventId);
+        Map<String, Object> mySummary = wagerRepository.computeSummaryForEvent(eventId, WagerStatus.PLACED);
         if (mySummary != null) {
             page.setMyWagerSummary(mySummary);
         }
