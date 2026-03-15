@@ -18,7 +18,7 @@ spring:
           in_clause_parameter_padding: true
 app:
   security:
-    enabled: false
+    enabled: true
   db:
     write-pool-size-hint: 30
     read-pool-size-hint: 30
