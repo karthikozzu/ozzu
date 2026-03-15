@@ -62,7 +62,7 @@ Create the first ECS/Fargate deployment from the pushed ECR image.
 
 ## 9) Update deployment after local changes
 ```bash
-aws ecs update-service --cluster cluster --service ozzu-stage-cluster --force-new-deployment --region ap-south-1
+aws ecs update-service --cluster default --service ozzu-stage-cluster --force-new-deployment --region ap-south-1
 ```
 Trigger ECS to pull the latest image and roll a new deployment.
 
