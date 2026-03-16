@@ -24,6 +24,9 @@ public class UserEntity extends AuditedEntity {
     @Column(name="display_name")
     private String displayName;
 
+    @Column(name="profile_photo_url")
+    private String profilePhotoUrl;
+
     private String email;
     private String phone;
 
@@ -104,5 +107,13 @@ public class UserEntity extends AuditedEntity {
 
     public void setReferredByUser(UserEntity referredByUser) {
         this.referredByUser = referredByUser;
+    }
+
+    public String getProfilePhotoUrl() {
+        return profilePhotoUrl;
+    }
+
+    public void setProfilePhotoUrl(String profilePhotoUrl) {
+        this.profilePhotoUrl = profilePhotoUrl;
     }
 }

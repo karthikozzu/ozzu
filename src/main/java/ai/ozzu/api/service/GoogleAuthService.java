@@ -21,12 +21,16 @@ public class GoogleAuthService {
     private final UserRepository userRepository;
     private final JwtService jwtService;
 
+    private final MediaService mediaService;
+
     public GoogleAuthService(GoogleTokenVerifierService googleVerifier,
                              UserRepository userRepository,
-                             JwtService jwtService) {
+                             JwtService jwtService,
+                             MediaService mediaService) {
         this.googleVerifier = googleVerifier;
         this.userRepository = userRepository;
         this.jwtService = jwtService;
+        this.mediaService = mediaService;
     }
 
     @Transactional
@@ -59,8 +63,8 @@ public class GoogleAuthService {
         u.setProvider(AuthProvider.GOOGLE);
         u.setProviderUserId(googleSub);
         u.setEmail(email);
-        u.setDisplayName(name);
-
+        u.setDisplayName(req.getDisplayName() == null || req.getDisplayName().trim().isEmpty() ? name :
+                req.getDisplayName());
         // Referral (if provided)
         if (req.getReferralCode() != null && !req.getReferralCode().isBlank()) {
             userRepository.findByReferralCode(req.getReferralCode().trim().toUpperCase(Locale.ROOT))
@@ -69,7 +73,17 @@ public class GoogleAuthService {
 
         // Generate unique referralCode for this new user
         u.setReferralCode(generateUniqueReferralCode());
+        UserEntity userEntity = userRepository.save(u);
 
+        // Upload Photo
+        String url = mediaService.uploadImage(
+                req.getProfilePhoto(),
+                u.getDisplayName()+".jpg",
+                "image/jpeg",
+                "USER_PHOTO",
+                userEntity.getId()
+        );
+        u.setProfilePhotoUrl(url);
         return userRepository.save(u);
     }
 

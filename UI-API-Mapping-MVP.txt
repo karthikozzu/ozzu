@@ -1,0 +1,11 @@
+1. Login
+2. Upload Photo and Display Name. (Check if display name is already taken) - Need Impl
+3. getSpotlight, getPredictions for that users for that domain.
+    3.1 getSpotlight should contain tokens available. Live Events, scores. location team1 vs team2. (top 5 events for that domain)
+    3.2 events if created as SPOTLIGHT event. then show it. also order by desc on timestamp
+    3.3 total number of users who wagered on the event
+    3.4 photo will be uploaded as part of the event and also the location
+    3.5 need way to upload photo for player and team
+    3.6 return non spotlite events
+    3.6 Wager section - my wager summary. your wage, how many on pot. how many succeeded and failed
+4. Event details will have detailed scorecard with team lineup

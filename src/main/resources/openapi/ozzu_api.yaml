@@ -1077,6 +1077,13 @@ components:
         idToken:
           type: string
           description: Google ID token (JWT) from Web/Android
+        displayName:
+          type: string
+          description: User Display
+        profilePhoto:
+          type: string
+          format: byte
+          description: Base64 encoded profile photo
         referralCode:
           type: string
           description: Optional referral code (applied only on first-time user creation)

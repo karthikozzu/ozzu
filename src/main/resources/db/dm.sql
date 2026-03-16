@@ -1407,3 +1407,5 @@ ALTER TABLE wager_card_bindings
     ADD COLUMN IF NOT EXISTS locked_at timestamptz;
 
 ALTER TYPE token_txn_type ADD VALUE IF NOT EXISTS 'WAGER_STAKE_DEBIT';
+
+ALTER TABLE users ADD COLUMN profile_photo_url TEXT;
