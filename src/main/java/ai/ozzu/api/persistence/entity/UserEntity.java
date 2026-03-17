@@ -24,6 +24,9 @@ public class UserEntity extends AuditedEntity {
     @Column(name="display_name")
     private String displayName;
 
+    @Column(name = "user_name")
+    private String userName;
+
     @Column(name="profile_photo_url")
     private String profilePhotoUrl;
 
@@ -115,5 +118,13 @@ public class UserEntity extends AuditedEntity {
 
     public void setProfilePhotoUrl(String profilePhotoUrl) {
         this.profilePhotoUrl = profilePhotoUrl;
+    }
+
+    public String getUserName() {
+        return userName;
+    }
+
+    public void setUserName(String userName) {
+        this.userName = userName;
     }
 }

@@ -106,19 +106,59 @@ paths:
 
   /ozzu/domains/{domainId}/actions/getSpotlight:
     get:
-      tags: [Spotlight]
+      tags: [ Spotlight ]
       summary: Spotlight feed
-      description: >
-        Returns spotlight content items including shorts, selected celebrity wagers,
-        and spotlight games with Info/Scorecard. Supports P2E (e.g., 25 shorts watched -> 50 tokens).
+      description: |
+        Returns spotlight feed for a domain.
+
+        Includes:
+        - User token balance
+        - Top spotlight events (is_spotlight = true, max 5)
+        - Non-spotlight events (sorted by time_event_start desc)
+
+        Each event includes:
+        - Teams (with score)
+        - Venue, location, image
+        - Total users participated
+        - Total pot amount
+        - Logged-in user's wager (if exists)
+
+        Ordering:
+        1. Spotlight events first
+        2. Then other events sorted by time_event_start DESC
+
       parameters:
         - $ref: "#/components/parameters/DomainId"
+
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 5
+          description: Max number of spotlight events
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 0
+
+        - name: includeNonSpotlight
+          in: query
+          required: false
+          schema:
+            type: boolean
+            default: true
+          description: Whether to include non-spotlight events
+
       requestBody:
         required: false
         content:
           application/json:
             schema:
               $ref: "#/components/schemas/SpotlightRequest"
+
       responses:
         "200":
           description: Spotlight response
@@ -1182,42 +1222,107 @@ components:
         contextualFacet:
           $ref: "#/components/schemas/ContextualFacet"
 
-    SpotlightItemType:
-      type: string
-      enum: [SHORTS, SPOTLIGHT_GAME, CELEBRITY_WAGERS, INFO_BLOCK]
-
     SpotlightItem:
       type: object
       properties:
-        id: { type: string }
+        id:
+          type: string
         responseType:
           $ref: "#/components/schemas/SpotlightItemType"
-        name: { type: string }
-        description: { type: string }
-        timeBegin: { $ref: "#/components/schemas/Timestamp" }
-        timeEnd: { $ref: "#/components/schemas/Timestamp" }
-        contentSchemaURI: { type: string }
+        name:
+          type: string
+        description:
+          type: string
+        timeBegin:
+          type: string
+          format: date-time
+        timeEnd:
+          type: string
+          format: date-time
         content:
-          $ref: "#/components/schemas/InternalProperties"
-        pageCount: { type: integer }
-        totalItems: { type: integer }
-        nextPage: { type: integer }
-        prevPage: { type: integer }
-        requestId: { type: string }
-        responseTime: { type: integer }
+          type: object
+          description: |
+            Dynamic content based on responseType.
+            ----
+            SPOTLIGHT_GAME:
+              eventId: string
+              isSpotlight: boolean
+              status: string (SCHEDULED, LIVE, COMPLETED)
+              series: string
+              venue: string
+              location: string
+              eventImageUrl: string
+              teamA:
+                id: string
+                name: string
+                logoUrl: string
+                score: string
+              teamB:
+                id: string
+                name: string
+                logoUrl: string
+                score: string
+              usersCount: number
+              potAmount: number
+              userWager:
+                amount: number
+                outcome: string (PENDING, WON, LOST)
+            ----
+            INFO_BLOCK:
+              tokens: number
+            ----
+            SHORTS:
+              videoUrl: string
+              thumbnailUrl: string
+            ----
+            CELEBRITY_WAGERS:
+              name: string
+              wagerAmount: number
+              prediction: string
+          additionalProperties: true
+        pageCount:
+          type: integer
+        totalItems:
+          type: integer
+        nextPage:
+          type: integer
+        prevPage:
+          type: integer
+        requestId:
+          type: string
+        responseTime:
+          type: integer
         internalProperties:
-          $ref: "#/components/schemas/InternalProperties"
+          type: object
+          additionalProperties: true
 
     SpotlightResponse:
       type: object
       properties:
+        pagination:
+          $ref: "#/components/schemas/Pagination"
         items:
           type: array
           items:
             $ref: "#/components/schemas/SpotlightItem"
-        internalProperties:
-          $ref: "#/components/schemas/InternalProperties"
 
+        internalProperties:
+          type: object
+          additionalProperties: true
+
+    Pagination:
+      type: object
+      properties:
+        page:
+          type: integer
+        limit:
+          type: integer
+        totalItems:
+          type: integer
+        nextPage:
+          type: integer
+        prevPage:
+          type: integer
     DomainCreateRequest:
       type: object
       required: [name]
@@ -1226,7 +1331,13 @@ components:
         description: { type: string }
         internalProperties:
           $ref: "#/components/schemas/InternalProperties"
-
+    SpotlightItemType:
+      type: string
+      enum:
+        - SHORTS
+        - SPOTLIGHT_GAME
+        - CELEBRITY_WAGERS
+        - INFO_BLOCK
     Domain:
       type: object
       properties:

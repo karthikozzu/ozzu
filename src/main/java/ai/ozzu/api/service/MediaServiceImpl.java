@@ -1,6 +1,7 @@
 package ai.ozzu.api.service;
 
 import ai.ozzu.api.config.MediaProperties;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import software.amazon.awssdk.core.sync.RequestBody;
@@ -13,8 +14,10 @@ import java.util.UUID;
 @Service
 public class MediaServiceImpl implements MediaService {
 
-    private final S3Client s3Client;
-    private final MediaProperties props;
+    @Autowired
+    private S3Client s3Client;
+    @Autowired
+    private MediaProperties props;
 
     @Value("${ozzu.media.bucket}")
     private String bucket;

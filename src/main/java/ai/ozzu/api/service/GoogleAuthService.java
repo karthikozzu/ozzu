@@ -63,6 +63,7 @@ public class GoogleAuthService {
         u.setProvider(AuthProvider.GOOGLE);
         u.setProviderUserId(googleSub);
         u.setEmail(email);
+        u.setUserName(name);
         u.setDisplayName(req.getDisplayName() == null || req.getDisplayName().trim().isEmpty() ? name :
                 req.getDisplayName());
         // Referral (if provided)

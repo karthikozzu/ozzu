@@ -74,4 +74,28 @@ public interface WagerRepository extends JpaRepository<WagerEntity, UUID> {
             @Param("eventId") UUID eventId,
             @Param("placed") WagerStatus placed
     );
+
+    @Query("""
+SELECT w.eventId, COUNT(DISTINCT w.userId)
+FROM WagerEntity w
+WHERE w.eventId IN :eventIds
+GROUP BY w.eventId
+""")
+    Map<UUID, Long> countUsersBulk(List<UUID> eventIds);
+
+    @Query("""
+SELECT w.eventId, SUM(w.stakeTokens)
+FROM WagerEntity w
+WHERE w.eventId IN :eventIds
+GROUP BY w.eventId
+""")
+    Map<UUID, Integer> sumPotBulk(List<UUID> eventIds);
+
+    @Query("""
+SELECT w
+FROM WagerEntity w
+WHERE w.userId = :userId
+AND w.eventId IN :eventIds
+""")
+    List<WagerEntity> findByUserIdAndEventIdIn(UUID userId, List<UUID> eventIds);
 }

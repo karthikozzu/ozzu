@@ -74,4 +74,27 @@ public interface EventRepository extends JpaRepository<EventEntity, UUID>, JpaSp
           @Param("cursorId") UUID cursorId,
           Pageable pageable
   );
+
+  @Query("""
+SELECT e FROM EventEntity e
+LEFT JOIN FETCH e.teamA
+LEFT JOIN FETCH e.teamB
+WHERE e.domain.id = :domainId
+AND e.is_spotlight = true
+ORDER BY e.timeEventStart DESC
+""")
+  List<EventEntity> findSpotlightEvents(UUID domainId, Pageable pageable);
+  @Query("""
+SELECT e FROM EventEntity e
+LEFT JOIN FETCH e.teamA
+LEFT JOIN FETCH e.teamB
+WHERE e.domain.id = :domainId
+AND e.is_spotlight = false
+ORDER BY e.timeEventStart DESC
+""")
+  List<EventEntity> findNonSpotlightEvents(UUID domainId, Pageable pageable);
+
+  List<EventEntity> findTop5ByDomainAndSpotlight(UUID domainId);
+
+  List<EventEntity> findTopNonSpotlight(UUID domainId);
 }

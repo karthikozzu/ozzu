@@ -5,6 +5,7 @@ import ai.ozzu.api.persistence.enums.TokenTxnType;
 import ai.ozzu.api.persistence.repo.TokenLedgerRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -23,6 +24,7 @@ public class TokenLedgerService {
     }
 
     @Transactional(readOnly = true)
+    @Cacheable(value = "balance", key = "#userId")
     public long balance(UUID userId) {
         return tokenLedgerRepo.getBalance(userId);
     }

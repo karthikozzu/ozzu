@@ -57,6 +57,26 @@ public class EventEntity extends AuditedEntity {
     @Column(name="is_completed", nullable=false)
     private boolean completed;
 
+    @Column(name = "is_spotlight")
+    private boolean is_spotlight;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name="team_a_id")
+    private TeamEntity teamA;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name="team_b_id")
+    private TeamEntity teamB;
+
+    @Column(name = "venue")
+    private String venue;
+
+    @Column(name = "location")
+    private String location;
+
+    @Column(name = "event_image_url")
+    private String eventImageUrl;
+
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name="internal_properties", nullable=false, columnDefinition="jsonb")
     private Map<String, Object> internalProperties = Map.of();
@@ -147,5 +167,53 @@ public class EventEntity extends AuditedEntity {
 
     public void setInternalProperties(Map<String, Object> internalProperties) {
         this.internalProperties = internalProperties;
+    }
+
+    public boolean isIs_spotlight() {
+        return is_spotlight;
+    }
+
+    public void setIs_spotlight(boolean is_spotlight) {
+        this.is_spotlight = is_spotlight;
+    }
+
+    public TeamEntity getTeamA() {
+        return teamA;
+    }
+
+    public void setTeamA(TeamEntity teamA) {
+        this.teamA = teamA;
+    }
+
+    public TeamEntity getTeamB() {
+        return teamB;
+    }
+
+    public void setTeamB(TeamEntity teamB) {
+        this.teamB = teamB;
+    }
+
+    public String getVenue() {
+        return venue;
+    }
+
+    public void setVenue(String venue) {
+        this.venue = venue;
+    }
+
+    public String getLocation() {
+        return location;
+    }
+
+    public void setLocation(String location) {
+        this.location = location;
+    }
+
+    public String getEventImageUrl() {
+        return eventImageUrl;
+    }
+
+    public void setEventImageUrl(String eventImageUrl) {
+        this.eventImageUrl = eventImageUrl;
     }
 }

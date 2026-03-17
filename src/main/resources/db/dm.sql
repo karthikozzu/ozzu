@@ -1409,3 +1409,12 @@ ALTER TABLE wager_card_bindings
 ALTER TYPE token_txn_type ADD VALUE IF NOT EXISTS 'WAGER_STAKE_DEBIT';
 
 ALTER TABLE users ADD COLUMN profile_photo_url TEXT;
+ALTER TABLE users ADD COLUMN user_name varchar;
+ALTER TABLE events ADD COLUMN is_spotlight bool;
+ALTER TABLE events ADD COLUMN team_a_id uuid;
+ALTER TABLE events ADD COLUMN team_b_id uuid;
+
+ALTER TABLE events ADD COLUMN venue VARCHAR(255);
+ALTER TABLE events ADD COLUMN location VARCHAR(255);
+
+ALTER TABLE events ADD COLUMN event_image_url TEXT;
