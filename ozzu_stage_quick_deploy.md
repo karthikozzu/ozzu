@@ -38,7 +38,11 @@ Prepare Docker buildx so Mac/Apple Silicon can build `linux/amd64` images for EC
 
 ## 6) Build and push image
 ```bash
-docker buildx build --platform linux/amd64 --provenance=false -t $ECR_URI:latest --push .
+docker buildx build \
+  --platform linux/amd64 \
+  --provenance=false \
+  -t ${ECR_URI}:latest \
+  --push .
 ```
 Build the image for ECS-compatible amd64 and push it directly to ECR.
 
