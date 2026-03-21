@@ -14,6 +14,7 @@ import java.util.UUID;
 @Service
 public class MediaServiceImpl implements MediaService {
 
+    public MediaServiceImpl(){}
     @Autowired
     private S3Client s3Client;
     @Autowired

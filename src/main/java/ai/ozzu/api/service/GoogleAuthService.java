@@ -1,16 +1,18 @@
 package ai.ozzu.api.service;
 
+import ai.ozzu.api.exceptions.BadRequestException;
 import ai.ozzu.api.exceptions.UnauthorizedException;
 import ai.ozzu.api.generated.model.AuthResponse;
-import ai.ozzu.api.generated.model.GoogleLoginRequest;
 import ai.ozzu.api.persistence.entity.UserEntity;
 import ai.ozzu.api.persistence.enums.AuthProvider;
 import ai.ozzu.api.persistence.repo.UserRepository;
+import ai.ozzu.api.persistence.request.GoogleLoginRequest;
 import ai.ozzu.api.security.GoogleTokenVerifierService;
 import ai.ozzu.api.security.JwtService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.io.IOException;
 import java.util.Locale;
 import java.util.UUID;
 
@@ -78,13 +80,18 @@ public class GoogleAuthService {
         UserEntity userEntity = userRepository.save(u);
 
         // Upload Photo
-        String url = mediaService.uploadImage(
-                req.getProfilePhoto(),
-                u.getDisplayName()+".jpg",
-                "image/jpeg",
-                "USER_PHOTO",
-                userEntity.getId()
-        );
+        String url = null;
+        try {
+            url = mediaService.uploadImage(
+                    req.getProfilePhoto().getContentAsByteArray(),
+                    u.getDisplayName()+".jpg",
+                    "image/jpeg",
+                    "USER_PHOTO",
+                    userEntity.getId()
+            );
+        } catch (IOException e) {
+            throw new BadRequestException(e.getMessage());
+        }
         u.setProfilePhotoUrl(url);
         return userRepository.save(u);
     }

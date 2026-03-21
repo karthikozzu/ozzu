@@ -5,10 +5,19 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="7e4d98bc-5cdc-4c99-8099-a19e10a9930c" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/service/UserService.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/persistence/request/GoogleLoginRequest.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/persistence/request/UserPutRequest.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/controller/SpotlightController.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/controller/SpotlightController.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/controller/UsersController.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/controller/UsersController.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/persistence/entity/EventEntity.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/persistence/entity/EventEntity.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/persistence/repo/EventRepository.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/persistence/repo/EventRepository.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/persistence/repo/WagerRepository.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/persistence/repo/WagerRepository.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/security/JwtAuthFilter.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/security/JwtAuthFilter.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/service/GoogleAuthService.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/service/GoogleAuthService.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/service/MediaServiceImpl.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/service/MediaServiceImpl.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/service/SpotlightService.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/service/SpotlightService.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/service/UserService.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/service/UserService.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main/resources/openapi/ozzu_api.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/resources/openapi/ozzu_api.yaml" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -80,6 +89,9 @@
   }
 }</component>
   <component name="RecentsManager">
+    <key name="CreateClassDialog.RecentsKey">
+      <recent name="ai.ozzu.api.service" />
+    </key>
     <key name="CopyFile.RECENT_KEYS">
       <recent name="$PROJECT_DIR$/src/main/resources" />
       <recent name="$PROJECT_DIR$/src/main/java/ai/ozzu/api/persistence/repo" />
@@ -96,7 +108,7 @@
       <recent name="ai.ozzu.api.exceptions" />
     </key>
   </component>
-  <component name="RunManager" selected="Spring Boot.Application">
+  <component name="RunManager" selected="Remote JVM Debug.Debug">
     <configuration name="Debug" type="Remote">
       <module name="ozzu" />
       <option name="USE_SOCKET_TRANSPORT" value="true" />
@@ -154,7 +166,7 @@
       <workItem from="1766493602551" duration="18819000" />
       <workItem from="1769242856609" duration="10569000" />
       <workItem from="1771050980575" duration="1070000" />
-      <workItem from="1773545405389" duration="15957000" />
+      <workItem from="1773545405389" duration="21227000" />
     </task>
     <servers />
   </component>
@@ -233,6 +245,56 @@
           <url>file://$PROJECT_DIR$/src/main/java/ai/ozzu/api/service/DomainService.java</url>
           <line>49</line>
           <option name="timeStamp" value="24" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" type="java-line">
+          <url>file://$PROJECT_DIR$/src/main/java/ai/ozzu/api/service/MediaServiceImpl.java</url>
+          <line>69</line>
+          <option name="timeStamp" value="25" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" type="java-line">
+          <url>file://$PROJECT_DIR$/src/main/java/ai/ozzu/api/controller/UsersController.java</url>
+          <line>51</line>
+          <option name="timeStamp" value="26" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" type="java-line">
+          <url>file://$PROJECT_DIR$/src/main/java/ai/ozzu/api/security/JwtAuthFilter.java</url>
+          <line>24</line>
+          <option name="timeStamp" value="27" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" type="java-line">
+          <url>file://$PROJECT_DIR$/src/main/java/ai/ozzu/api/security/JwtAuthFilter.java</url>
+          <line>44</line>
+          <option name="timeStamp" value="28" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" type="java-line">
+          <url>file://$PROJECT_DIR$/src/main/java/ai/ozzu/api/security/JwtAuthFilter.java</url>
+          <line>48</line>
+          <option name="timeStamp" value="29" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" type="java-line">
+          <url>file://$PROJECT_DIR$/src/main/java/ai/ozzu/api/security/JwtAuthFilter.java</url>
+          <line>40</line>
+          <option name="timeStamp" value="30" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" type="java-line">
+          <url>file://$PROJECT_DIR$/src/main/java/ai/ozzu/api/security/JwtAuthFilter.java</url>
+          <line>35</line>
+          <option name="timeStamp" value="31" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" type="java-line">
+          <url>file://$PROJECT_DIR$/src/main/java/ai/ozzu/api/service/UserService.java</url>
+          <line>45</line>
+          <option name="timeStamp" value="32" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" type="java-line">
+          <url>file://$PROJECT_DIR$/src/main/java/ai/ozzu/api/controller/SpotlightController.java</url>
+          <line>37</line>
+          <option name="timeStamp" value="34" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" type="java-line">
+          <url>file://$PROJECT_DIR$/src/main/java/ai/ozzu/api/service/SpotlightService.java</url>
+          <line>48</line>
+          <option name="timeStamp" value="35" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="java-method">
           <url>file://$PROJECT_DIR$/src/main/java/ai/ozzu/api/persistence/repo/TokenLedgerRepository.java</url>

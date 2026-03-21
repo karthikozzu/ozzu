@@ -2,17 +2,19 @@ package ai.ozzu.api.controller;
 
 import ai.ozzu.api.generated.api.UsersApi;
 import ai.ozzu.api.generated.model.AuthResponse;
-import ai.ozzu.api.generated.model.GoogleLoginRequest;
 import ai.ozzu.api.generated.model.User;
-import ai.ozzu.api.generated.model.UserPutRequest;
 import ai.ozzu.api.generated.model.UserRegistrationRequest;
+import ai.ozzu.api.persistence.request.GoogleLoginRequest;
+import ai.ozzu.api.persistence.request.UserPutRequest;
 import ai.ozzu.api.service.GoogleAuthService;
 import ai.ozzu.api.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.context.request.NativeWebRequest;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -39,14 +41,29 @@ public class UsersController implements UsersApi {
     }
 
     @Override
-    public ResponseEntity<AuthResponse> ozzuUsersActionsGoogleLoginPost(GoogleLoginRequest googleLoginRequest) {
-        AuthResponse auth = googleAuthService.googleLogin(googleLoginRequest);
+    public ResponseEntity<AuthResponse> ozzuUsersActionsGoogleLoginPost(String idToken, String displayName, MultipartFile profilePhoto, String referralCode, Map<String, Object> internalProperties) {
+        GoogleLoginRequest loginRequest = new GoogleLoginRequest();
+        loginRequest.setDisplayName(displayName);
+        loginRequest.setReferralCode(referralCode);
+        loginRequest.setInternalProperties(internalProperties);
+        loginRequest.setIdToken(idToken);
+        loginRequest.setProfilePhoto(profilePhoto.getResource());
+        AuthResponse auth = googleAuthService.googleLogin(loginRequest);
         return ResponseEntity.ok(auth);
     }
 
     @Override
-    public ResponseEntity<User> ozzuUsersUserIdPut(UUID userId, UserPutRequest userPutRequest) {
+    public ResponseEntity<User> ozzuUsersUserIdPut(UUID userId, String displayName, MultipartFile profilePhoto) {
+        UserPutRequest userPutRequest = new UserPutRequest();
+        userPutRequest.setDisplayName(displayName);
+        userPutRequest.setProfilePhoto(profilePhoto.getResource());
         User user = userService.updateUser(userId, userPutRequest);
+        return ResponseEntity.ok(user);
+    }
+
+    @Override
+    public ResponseEntity<User> ozzuUsersUserIdGet(UUID userId) {
+        User user = userService.getUser(userId);
         return ResponseEntity.ok(user);
     }
 }

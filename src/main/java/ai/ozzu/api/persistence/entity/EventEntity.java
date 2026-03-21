@@ -58,7 +58,7 @@ public class EventEntity extends AuditedEntity {
     private boolean completed;
 
     @Column(name = "is_spotlight")
-    private boolean is_spotlight;
+    private boolean spotlight;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name="team_a_id")
@@ -169,12 +169,12 @@ public class EventEntity extends AuditedEntity {
         this.internalProperties = internalProperties;
     }
 
-    public boolean isIs_spotlight() {
-        return is_spotlight;
+    public boolean isSpotlight() {
+        return spotlight;
     }
 
-    public void setIs_spotlight(boolean is_spotlight) {
-        this.is_spotlight = is_spotlight;
+    public void setSpotlight(boolean spotlight) {
+        this.spotlight = spotlight;
     }
 
     public TeamEntity getTeamA() {

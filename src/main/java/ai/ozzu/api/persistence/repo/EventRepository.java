@@ -79,22 +79,20 @@ public interface EventRepository extends JpaRepository<EventEntity, UUID>, JpaSp
 SELECT e FROM EventEntity e
 LEFT JOIN FETCH e.teamA
 LEFT JOIN FETCH e.teamB
+LEFT JOIN FETCH e.series
 WHERE e.domain.id = :domainId
-AND e.is_spotlight = true
+AND e.spotlight = true
 ORDER BY e.timeEventStart DESC
 """)
-  List<EventEntity> findSpotlightEvents(UUID domainId, Pageable pageable);
+  List<EventEntity> findSpotlightEvents(@Param("domainId") UUID domainId, Pageable pageable);
   @Query("""
 SELECT e FROM EventEntity e
 LEFT JOIN FETCH e.teamA
 LEFT JOIN FETCH e.teamB
+LEFT JOIN FETCH e.series
 WHERE e.domain.id = :domainId
-AND e.is_spotlight = false
+AND e.spotlight = false
 ORDER BY e.timeEventStart DESC
 """)
-  List<EventEntity> findNonSpotlightEvents(UUID domainId, Pageable pageable);
-
-  List<EventEntity> findTop5ByDomainAndSpotlight(UUID domainId);
-
-  List<EventEntity> findTopNonSpotlight(UUID domainId);
+  List<EventEntity> findNonSpotlightEvents(@Param("domainId")UUID domainId, Pageable pageable);
 }

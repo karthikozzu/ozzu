@@ -28,8 +28,7 @@ public class SpotlightController implements SpotlightApi {
 
     @Override
     public ResponseEntity<SpotlightResponse> ozzuDomainsDomainIdActionsGetSpotlightGet(UUID domainId, Integer limit, Integer page,
-                                                                                       Boolean includeNonSpotlight,
-                                                                                       SpotlightRequest spotlightRequest) {
+                                                                                       Boolean includeNonSpotlight) {
 
         UUID userId = authContext.currentUserId();
 

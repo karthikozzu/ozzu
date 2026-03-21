@@ -30,8 +30,19 @@ public class SpotlightService {
     @Autowired
     private TokenLedgerService tokenLedgerService;
 
+
     /**
-     * Main API
+     * Returns a list of events for the given domainId, userId, limit and page.
+     * The response will contain two types of events: spotlight events and non-spotlight events.
+     * Spotlight events are events that are marked as spotlight events in the database.
+     * Non-spotlight events are events that are not marked as spotlight events in the database.
+     * The response will also contain a pagination object that contains information about the total number of items,
+     * the current page, and the next and previous page numbers.
+     * @param domainId the UUID of the domain
+     * @param userId the UUID of the user
+     * @param limit the maximum number of items to return
+     * @param page the page number to return
+     * @return a list of events and a pagination object
      */
     public SpotlightResponse getSpotlight(UUID domainId, UUID userId, int limit, int page) {
 
@@ -58,7 +69,6 @@ public class SpotlightService {
 
         SpotlightResponse response = new SpotlightResponse();
 
-        // 🔹 1. Add token info
         long tokens = tokenLedgerService.balance(userId);
 
         response.addItemsItem(
@@ -67,10 +77,9 @@ public class SpotlightService {
                         .putContentItem("tokens", tokens)
         );
 
-        // 🔹 2. Add events
         for (EventEntity event : allEvents) {
 
-            boolean isSpotlight = event.isIs_spotlight();
+            boolean isSpotlight = event.isSpotlight();
 
             SpotlightItem item = mapEvent(
                     event,
@@ -92,8 +101,13 @@ public class SpotlightService {
         return response;
     }
 
+
     /**
-     * Bulk fetch user wagers
+     * Finds all wagers of a user in a list of events, sorted by the most recent wager.
+     * If the list of events is empty, returns an empty map.
+     * @param userId the user ID
+     * @param eventIds the list of event IDs
+     * @return a map of event ID to the corresponding most recent wager
      */
     public Map<UUID, WagerEntity> findUserWagersBulk(UUID userId, List<UUID> eventIds) {
 

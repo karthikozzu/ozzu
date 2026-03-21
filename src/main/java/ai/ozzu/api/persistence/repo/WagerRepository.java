@@ -81,7 +81,7 @@ FROM WagerEntity w
 WHERE w.eventId IN :eventIds
 GROUP BY w.eventId
 """)
-    Map<UUID, Long> countUsersBulk(List<UUID> eventIds);
+    Map<UUID, Long> countUsersBulk(@Param("eventIds") List<UUID> eventIds);
 
     @Query("""
 SELECT w.eventId, SUM(w.stakeTokens)
@@ -89,7 +89,7 @@ FROM WagerEntity w
 WHERE w.eventId IN :eventIds
 GROUP BY w.eventId
 """)
-    Map<UUID, Integer> sumPotBulk(List<UUID> eventIds);
+    Map<UUID, Integer> sumPotBulk(@Param("eventIds")List<UUID> eventIds);
 
     @Query("""
 SELECT w
@@ -97,5 +97,5 @@ FROM WagerEntity w
 WHERE w.userId = :userId
 AND w.eventId IN :eventIds
 """)
-    List<WagerEntity> findByUserIdAndEventIdIn(UUID userId, List<UUID> eventIds);
+    List<WagerEntity> findByUserIdAndEventIdIn(@Param("userId")UUID userId, @Param("eventIds")List<UUID> eventIds);
 }

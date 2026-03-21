@@ -48,7 +48,7 @@ paths:
       requestBody:
         required: true
         content:
-          application/json:
+          multipart/form-data:
             schema:
               $ref: "#/components/schemas/GoogleLoginRequest"
       responses:
@@ -151,14 +151,6 @@ paths:
             type: boolean
             default: true
           description: Whether to include non-spotlight events
-
-      requestBody:
-        required: false
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/SpotlightRequest"
-
       responses:
         "200":
           description: Spotlight response
@@ -992,6 +984,19 @@ paths:
                 $ref: "#/components/schemas/TokenBalanceResponse"
 
   /ozzu/users/{userId}:
+    get:
+      tags: [ Users ]
+      summary: Update User
+      parameters:
+        - $ref: "#/components/parameters/UserId"
+      responses:
+        "200":
+          description: Balance
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+
     put:
       tags: [ Users ]
       summary: Update User
@@ -1000,7 +1005,7 @@ paths:
       requestBody:
         required: true
         content:
-          application/json:
+          multipart/form-data:
             schema:
               $ref: "#/components/schemas/UserPutRequest"
       responses:
@@ -1137,7 +1142,7 @@ components:
           type: string
         profilePhoto:
           type: string
-          format: byte
+          format: binary
           description: Base64 encoded profile photo
 
     GoogleLoginRequest:
@@ -1152,7 +1157,7 @@ components:
           description: User Display
         profilePhoto:
           type: string
-          format: byte
+          format: binary
           description: Base64 encoded profile photo
         referralCode:
           type: string
