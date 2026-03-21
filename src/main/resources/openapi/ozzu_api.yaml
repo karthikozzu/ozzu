@@ -991,6 +991,26 @@ paths:
               schema:
                 $ref: "#/components/schemas/TokenBalanceResponse"
 
+  /ozzu/users/{userId}:
+    put:
+      tags: [ Users ]
+      summary: Update User
+      parameters:
+        - $ref: "#/components/parameters/UserId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserPutRequest"
+      responses:
+        "200":
+          description: Balance
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+
 components:
   securitySchemes:
     BearerAuth:
@@ -1110,6 +1130,16 @@ components:
       type: string
       enum: [EMAIL, GOOGLE, APPLE, FACEBOOK]
 
+    UserPutRequest:
+      type: object
+      properties:
+        displayName:
+          type: string
+        profilePhoto:
+          type: string
+          format: byte
+          description: Base64 encoded profile photo
+
     GoogleLoginRequest:
       type: object
       required: [ idToken ]
@@ -1143,6 +1173,8 @@ components:
         expiresInSeconds:
           type: integer
           example: 7200
+        userId:
+          type: string
 
     UserRegistrationRequest:
       type: object

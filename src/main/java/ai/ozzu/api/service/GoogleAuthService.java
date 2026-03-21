@@ -54,6 +54,7 @@ public class GoogleAuthService {
         out.setAccessToken(jwt);
         out.setTokenType("Bearer");
         out.setExpiresInSeconds(jwtService.getTtlSeconds());
+        out.setUserId(user.getId().toString());
         return out;
     }
 
