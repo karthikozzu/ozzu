@@ -43,9 +43,9 @@ mvn spring-boot:run -Dspring-boot.run.profiles=dev -Dspring-boot.run.jvmArgument
 ```
 docker build --no-cache -t ozzu-api .
 
-docker run --rm -p 3001:3001 -e SPRING_PROFILES_ACTIVE=dev -e SERVER_PORT=300
+docker run --rm -p 3001:3001 -e SPRING_PROFILES_ACTIVE=stage -e SERVER_PORT=3001
 karthik@Karthikeyans-MacBook-Pro ozzu % docker run --rm -p 3001:3001 \
--e SPRING_PROFILES_ACTIVE=dev \
+-e SPRING_PROFILES_ACTIVE=stage \
 -e SERVER_PORT=3001 \
 -e SPRING_DATASOURCE_URL="jdbc:postgresql://host.docker.internal:5432/ozzu_dev" \
 -e SPRING_DATASOURCE_USERNAME="postgres" \

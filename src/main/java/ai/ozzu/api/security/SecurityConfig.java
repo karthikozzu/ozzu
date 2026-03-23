@@ -31,6 +31,7 @@ public class SecurityConfig {
                                 "/ozzu/users/actions/**",
                                 "/v3/api-docs/**",
                                 "/swagger-ui/**",
+                                "/actuator/health",
                                 "/swagger-ui.html"
                         ).permitAll()
                         .anyRequest().authenticated()
