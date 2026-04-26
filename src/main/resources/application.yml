@@ -3,7 +3,7 @@ spring:
     database-platform: org.hibernate.dialect.PostgreSQLDialect
     open-in-view: false
     hibernate:
-      ddl-auto: none
+      ddl-auto: validate
     properties:
       hibernate:
         jdbc:
