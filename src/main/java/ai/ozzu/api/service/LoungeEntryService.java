@@ -1,5 +1,6 @@
 package ai.ozzu.api.service;
 
+import ai.ozzu.api.exceptions.BadRequestException;
 import ai.ozzu.api.exceptions.EntityNotFoundException;
 import ai.ozzu.api.generated.model.LoungeEntry;
 import ai.ozzu.api.generated.model.LoungeEntryCreateRequest;
@@ -16,8 +17,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.OffsetDateTime;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 
 @Service
@@ -111,5 +115,38 @@ public class LoungeEntryService {
         api.setInternalProperties(ip);
 
         return api;
+    }
+
+    public List<LoungeEntry> getLoungeEntries(UUID domainId, UUID eventId, UUID eventLoungeId, UUID userId) {
+        log.info("Fetching lounge entries for userId={}, eventLoungeId={}, eventId={} ", userId, eventLoungeId, eventId);
+        List<LoungeEntryEntity> loungeEntries;
+        Optional<EventLoungeEntity> eventLoungeEntity = eventLoungeRepository.findByIdAndDomain_IdAndEvent_Id
+                (eventLoungeId, domainId, eventId);
+        try {
+            if(eventLoungeEntity.isPresent()) {
+                EventLoungeEntity eventLounge = eventLoungeEntity.get();
+                loungeEntries = loungeEntryRepository.findAllByEventLounge_IdAndUser_Id(eventLounge.getId(), userId);
+            }
+            else {
+                log.error("Event Lounge Not Found:"+ eventLoungeId.toString());
+                throw new EntityNotFoundException("Event Lounge Not Found:"+ eventLoungeId);
+            }
+        }
+        catch (Exception e) {
+            log.error("Exception while lounge entries for userid={}, eventLounge={}", userId, eventLoungeId);
+            throw new BadRequestException("Error while fetching Lounge Entries: " + eventLoungeId);
+        }
+        List<LoungeEntry> loungeEntryList = new ArrayList<>();
+        for(LoungeEntryEntity loungeEntryEntity : loungeEntries) {
+            LoungeEntry loungeEntry = new LoungeEntry();
+            loungeEntry.setEventLoungeId(loungeEntryEntity.getEventLounge().getId());
+            loungeEntry.setId(loungeEntryEntity.getId());
+            loungeEntry.setUserId(userId);
+            loungeEntry.setInternalProperties(loungeEntry.getInternalProperties());
+            loungeEntry.setWagerId(loungeEntry.getWagerId());
+            loungeEntry.setTimeCreated(loungeEntry.getTimeCreated());
+            loungeEntryList.add(loungeEntry);
+        }
+        return loungeEntryList;
     }
 }

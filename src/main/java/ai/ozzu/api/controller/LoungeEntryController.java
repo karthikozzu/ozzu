@@ -9,6 +9,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.context.request.NativeWebRequest;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -40,5 +41,13 @@ public class LoungeEntryController implements LoungeEntriesApi {
                 domainId, eventId, eventLoungeId, userId, loungeEntryCreateRequest
         );
         return ResponseEntity.status(201).body(created);
+    }
+
+    @Override
+    public ResponseEntity<List<LoungeEntry>> ozzuDomainsDomainIdEventsEventIdEventLoungesEventLoungeIdLoungeEntriesGet(
+            UUID domainId, UUID eventId, UUID eventLoungeId, UUID userId) {
+
+        List<LoungeEntry> loungeEntries = loungeEntryService.getLoungeEntries(domainId, eventId, eventLoungeId, userId);
+        return ResponseEntity.status(200).body(loungeEntries);
     }
 }

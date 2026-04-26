@@ -285,7 +285,7 @@ public class WagerService {
     }
 
     @Transactional(readOnly = true)
-    public PageResult<Wager> getWagersPaginated(UUID domainId, Integer limit, String cursor) {
+    public PageResult<Wager> getWagersPaginated(UUID domainId, Integer limit, String cursor, UUID userId) {
         int effectiveLimit = (limit == null || limit <= 0) ? 20 : limit;
 
         log.info("wager.listPaginated domainId={} limit={} cursorPresent={}",
@@ -297,14 +297,22 @@ public class WagerService {
 
         if (cursor != null && !cursor.isBlank()) {
             var decoded = CursorHelper.decode(cursor);
-            entityPage = wagerRepo.findByDomainIdAfterCursor(
+            entityPage = userId == null || userId.toString().isEmpty() ? wagerRepo.findByDomainIdAfterCursor(
                     domainId,
+                    decoded.getFirst(),
+                    decoded.getSecond(),
+                    pageable
+            ) : wagerRepo.findByDomainIdAndUserIdAfterCursor(
+                    domainId,
+                    userId,
                     decoded.getFirst(),
                     decoded.getSecond(),
                     pageable
             );
         } else {
-            entityPage = wagerRepo.findByDomainIdOrderByCreatedAtDesc(domainId, pageable);
+            entityPage = userId == null || userId.toString().isEmpty() ?
+                    wagerRepo.findByDomainIdOrderByCreatedAtDesc(domainId, pageable) :
+                    wagerRepo.findByDomainIdAndUserIdOrdOrderByCreatedAtDesc(domainId, userId, pageable) ;
         }
 
         boolean hasMore = entityPage.size() > effectiveLimit;

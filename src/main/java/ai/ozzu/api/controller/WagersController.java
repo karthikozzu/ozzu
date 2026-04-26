@@ -25,11 +25,11 @@ public class WagersController implements WagersApi {
     @Override
     public ResponseEntity<WagerListResponse> ozzuDomainsDomainIdActionsGetWagersGet(UUID domainId,
                                                                               Integer limit,
-                                                                              String cursor) {
+                                                                              String cursor, UUID userId) {
         // default guard
         int pageSize = (limit == null || limit <= 0) ? 20 : Math.min(limit, 100);
 
-        var page = wagerService.getWagersPaginated(domainId, pageSize, cursor);
+        var page = wagerService.getWagersPaginated(domainId, pageSize, cursor, userId);
 
         WagerListResponse resp = new WagerListResponse()
                 .items(page.items())

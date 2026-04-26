@@ -575,6 +575,7 @@ paths:
         - $ref: "#/components/parameters/DomainId"
         - $ref: "#/components/parameters/Limit"
         - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/QueryUserId"
       responses:
         "200":
           description: Wager list with pagination
@@ -800,6 +801,23 @@ paths:
                 $ref: "#/components/schemas/ApiError"
 
   /ozzu/domains/{domainId}/events/{eventId}/eventLounges/{eventLoungeId}/loungeEntries:
+    get:
+      tags: [ LoungeEntries ]
+      summary: Get / entries from an event lounge
+      parameters:
+        - $ref: "#/components/parameters/DomainId"
+        - $ref: "#/components/parameters/EventId"
+        - $ref: "#/components/parameters/EventLoungeId"
+        - $ref: "#/components/parameters/QueryUserId"
+      responses:
+        "200":
+          description: List of Lounge Entries
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/LoungeEntry"
     post:
       tags: [LoungeEntries]
       summary: Register / enter an event lounge
@@ -1084,6 +1102,13 @@ components:
       in: path
       required: true
       schema: { type: string, format: uuid }
+
+    QueryUserId:
+      name: userId
+      in: query
+      required: false
+      schema:
+        {type: string, format: uuid}
 
     LoungeId:
       name: loungeId

@@ -51,7 +51,25 @@ public interface WagerRepository extends JpaRepository<WagerEntity, UUID> {
             Pageable pageable
     );
 
+    @Query("""
+            select w from WagerEntity w
+            where w.domainId = :domainId
+              and    w.userId = :userId
+              and (w.createdAt < :cursorTime
+                   or (w.createdAt = :cursorTime and w.id < :cursorId))
+            order by w.createdAt desc, w.id desc
+            """)
+    List<WagerEntity> findByDomainIdAndUserIdAfterCursor(
+            @Param("domainId") UUID domainId,
+            @Param("userId") UUID userId,
+            @Param("cursorTime") OffsetDateTime cursorTime,
+            @Param("cursorId") UUID cursorId,
+            Pageable pageable
+    );
+
     List<WagerEntity> findByDomainIdOrderByCreatedAtDesc(UUID domainId, Pageable pageable);
+
+    List<WagerEntity> findByDomainIdAndUserIdOrdOrderByCreatedAtDesc(UUID domainId, UUID userId, Pageable pageable);
 
     @Query("""
             select w
