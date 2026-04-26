@@ -47,7 +47,9 @@ public class UsersController implements UsersApi {
         loginRequest.setReferralCode(referralCode);
         loginRequest.setInternalProperties(internalProperties);
         loginRequest.setIdToken(idToken);
-        loginRequest.setProfilePhoto(profilePhoto.getResource());
+        if(!(profilePhoto == null || profilePhoto.isEmpty())){
+            loginRequest.setProfilePhoto(profilePhoto.getResource());
+        }
         AuthResponse auth = googleAuthService.googleLogin(loginRequest);
         return ResponseEntity.ok(auth);
     }
@@ -56,7 +58,9 @@ public class UsersController implements UsersApi {
     public ResponseEntity<User> ozzuUsersUserIdPut(UUID userId, String displayName, MultipartFile profilePhoto) {
         UserPutRequest userPutRequest = new UserPutRequest();
         userPutRequest.setDisplayName(displayName);
-        userPutRequest.setProfilePhoto(profilePhoto.getResource());
+        if(!(profilePhoto == null || profilePhoto.isEmpty())){
+            userPutRequest.setProfilePhoto(profilePhoto.getResource());
+        }
         User user = userService.updateUser(userId, userPutRequest);
         return ResponseEntity.ok(user);
     }

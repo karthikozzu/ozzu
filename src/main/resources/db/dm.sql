@@ -1418,3 +1418,9 @@ ALTER TABLE events ADD COLUMN venue VARCHAR(255);
 ALTER TABLE events ADD COLUMN location VARCHAR(255);
 
 ALTER TABLE events ADD COLUMN event_image_url TEXT;
+
+ALTER TABLE relationships ADD COLUMN updated_at timestamptz NOT NULL DEFAULT now();
+
+ALTER TABLE wager_state_events ADD COLUMN event_id uuid;
+
+ALTER TABLE wager_state_events ALTER COLUMN request_id type uuid USING request_id::uuid;

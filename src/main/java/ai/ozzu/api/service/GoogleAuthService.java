@@ -80,19 +80,21 @@ public class GoogleAuthService {
         UserEntity userEntity = userRepository.save(u);
 
         // Upload Photo
-        String url = null;
-        try {
-            url = mediaService.uploadImage(
-                    req.getProfilePhoto().getContentAsByteArray(),
-                    u.getDisplayName()+".jpg",
-                    "image/jpeg",
-                    "USER_PHOTO",
-                    userEntity.getId()
-            );
-        } catch (IOException e) {
-            throw new BadRequestException(e.getMessage());
+        if(req.getProfilePhoto() != null) {
+            String url;
+            try {
+                url = mediaService.uploadImage(
+                        req.getProfilePhoto().getContentAsByteArray(),
+                        u.getDisplayName()+".jpg",
+                        "image/jpeg",
+                        "USER_PHOTO",
+                        userEntity.getId()
+                );
+            } catch (IOException e) {
+                throw new BadRequestException(e.getMessage());
+            }
+            u.setProfilePhotoUrl(url);
         }
-        u.setProfilePhotoUrl(url);
         return userRepository.save(u);
     }
 
