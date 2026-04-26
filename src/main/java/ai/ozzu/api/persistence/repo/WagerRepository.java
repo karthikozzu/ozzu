@@ -69,7 +69,7 @@ public interface WagerRepository extends JpaRepository<WagerEntity, UUID> {
 
     List<WagerEntity> findByDomainIdOrderByCreatedAtDesc(UUID domainId, Pageable pageable);
 
-    List<WagerEntity> findByDomainIdAndUserIdOrdOrderByCreatedAtDesc(UUID domainId, UUID userId, Pageable pageable);
+    List<WagerEntity> findByDomainIdAndUserIdOrderByCreatedAtDesc(UUID domainId, UUID userId, Pageable pageable);
 
     @Query("""
             select w

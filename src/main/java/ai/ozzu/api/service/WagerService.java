@@ -312,7 +312,7 @@ public class WagerService {
         } else {
             entityPage = userId == null || userId.toString().isEmpty() ?
                     wagerRepo.findByDomainIdOrderByCreatedAtDesc(domainId, pageable) :
-                    wagerRepo.findByDomainIdAndUserIdOrdOrderByCreatedAtDesc(domainId, userId, pageable) ;
+                    wagerRepo.findByDomainIdAndUserIdOrderByCreatedAtDesc(domainId, userId, pageable) ;
         }
 
         boolean hasMore = entityPage.size() > effectiveLimit;
