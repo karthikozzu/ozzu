@@ -26,9 +26,4 @@ public class OpenApiConfig {
                                 .bearerFormat("JWT")
                 ));
     }
-
-    @Bean
-    public Filter forwardedHeaderFilter() {
-        return new ForwardedHeaderFilter();
-    }
 }

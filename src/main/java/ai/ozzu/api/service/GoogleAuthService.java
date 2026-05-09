@@ -49,7 +49,8 @@ public class GoogleAuthService {
         UserEntity user = userRepository
                 .findByProviderAndProviderUserId(AuthProvider.GOOGLE, googleSub)
                 .orElseGet(() -> createGoogleUser(req, googleSub, email, name));
-
+        user.setDisplayName(req.getDisplayName());
+        userRepository.save(user);
         String jwt = jwtService.issue(user.getId(), user.getEmail(), user.getProvider().name());
 
         AuthResponse out = new AuthResponse();
