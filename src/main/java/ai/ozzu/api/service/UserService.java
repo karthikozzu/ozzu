@@ -75,9 +75,11 @@ public class UserService {
         response.setProvider(AuthProvider.valueOf(user.getProvider().name()));
         response.setTimeCreated(user.getCreatedAt());
         response.setTimeUpdated(user.getUpdatedAt());
-        response.setInternalProperties(Map.of(
-                "profilePhotoUrl", user.getProfilePhotoUrl()
-        ));
+        if(user.getProfilePhotoUrl() != null) {
+            response.setInternalProperties(Map.of(
+                    "profilePhotoUrl", user.getProfilePhotoUrl()
+            ));
+        }
         return response;
     }
 }
