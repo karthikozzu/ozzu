@@ -24,7 +24,12 @@ app:
 google:
   clientId: "129977490269-shuqvtr3m2l69t0verkbpk98q44v02qv.apps.googleusercontent.com"
 
+aws:
+  region: ap-south-1
+  s3:
+    bucket: ozzu-media-stage
+
 ozzu:
   media:
-    bucket: ozzu-media-stg
+    bucket: ozzu-media-stage
     region: ap-south-1

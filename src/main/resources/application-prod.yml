@@ -1,6 +1,6 @@
 spring:
   datasource:
-    url: jdbc:postgresql://localhost:5432/ozzu_dev
+    url: jdbc:postgresql://ozzu-dev1.cpcumeo663ii.ap-south-1.rds.amazonaws.com:5432/ozzu_dev
     username: postgres
     password: postgres
     hikari:
@@ -27,9 +27,9 @@ google:
 aws:
   region: ap-south-1
   s3:
-    bucket: ozzu-media-dev
+    bucket: ozzu-media-prod
 
 ozzu:
   media:
-    bucket: ozzu-media-dev
+    bucket: ozzu-media-prod
     region: ap-south-1
