@@ -43,4 +43,17 @@ public final class EventSpecs {
                 )
         );
     }
+
+    public static Specification<EventEntity> teamId(UUID teamId) {
+        return (root, query, cb) -> {
+            if (teamId == null) {
+                return cb.conjunction();
+            }
+
+            return cb.or(
+                    cb.equal(root.get("teamA").get("id"), teamId),
+                    cb.equal(root.get("teamB").get("id"), teamId)
+            );
+        };
+    }
 }

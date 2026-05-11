@@ -1,5 +1,6 @@
 package ai.ozzu.api.service;
 
+import ai.ozzu.api.exceptions.BadRequestException;
 import ai.ozzu.api.exceptions.EntityAlreadyExistsException;
 import ai.ozzu.api.exceptions.EntityNotFoundException;
 import ai.ozzu.api.exceptions.MissingFieldException;
@@ -16,6 +17,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -29,14 +31,18 @@ public class TeamsService {
     private final DomainRepository domainRepository;
     private final SeriesRepository seriesRepository;
 
+    private final MediaService mediaService;
+
     public TeamsService(
             TeamRepository teamRepository,
             DomainRepository domainRepository,
-            SeriesRepository seriesRepository
+            SeriesRepository seriesRepository,
+            MediaService mediaService
     ) {
         this.teamRepository = teamRepository;
         this.domainRepository = domainRepository;
         this.seriesRepository = seriesRepository;
+        this.mediaService = mediaService;
     }
 
     @Transactional(readOnly = true)
@@ -94,7 +100,21 @@ public class TeamsService {
         entity.setInternalProperties(
                 req.getInternalProperties() != null ? req.getInternalProperties() : Map.of()
         );
-
+        if(req.getImage() != null) {
+            String url;
+            try {
+                url = mediaService.uploadImage(
+                        req.getImage().getContentAsByteArray(),
+                        entity.getName()+".jpg",
+                        "image/jpeg",
+                        "TEAM_PHOTO",
+                        entity.getId()
+                );
+            } catch (IOException ex) {
+                throw new BadRequestException(ex.getMessage());
+            }
+            entity.setTeamPhotoUrl(url);
+        }
         TeamEntity saved = teamRepository.save(entity);
 
         log.info(
@@ -154,6 +174,7 @@ public class TeamsService {
         t.setDomainId(e.getDomain() != null ? e.getDomain().getId() : null);
         t.setSeriesId(e.getSeries() != null ? e.getSeries().getId() : null);
         t.setName(e.getName());
+        t.setImageUrl(e.getTeamPhotoUrl());
         t.setTimeCreated(e.getCreatedAt());
         t.setTimeUpdated(e.getUpdatedAt());
         t.setInternalProperties(e.getInternalProperties());

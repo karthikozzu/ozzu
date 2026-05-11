@@ -107,25 +107,23 @@ paths:
   /ozzu/domains/{domainId}/actions/getSpotlight:
     get:
       tags: [ Spotlight ]
-      summary: Spotlight feed
+      summary: Spotlight events feed
       description: |
-        Returns spotlight feed for a domain.
+        Returns spotlight events for a domain.
 
         Includes:
-        - User token balance
-        - Top spotlight events (is_spotlight = true, max 5)
-        - Non-spotlight events (sorted by time_event_start desc)
-
-        Each event includes:
-        - Teams (with score)
-        - Venue, location, image
+        - Logged-in user's token balance
+        - Spotlight events first
+        - Non-spotlight events after spotlight events
+        - Teams participating in each event
+        - Score summary
         - Total users participated
         - Total pot amount
-        - Logged-in user's wager (if exists)
+        - Logged-in user's wager, if exists
 
         Ordering:
         1. Spotlight events first
-        2. Then other events sorted by time_event_start DESC
+        2. Then non-spotlight events sorted by time_event_start DESC
 
       parameters:
         - $ref: "#/components/parameters/DomainId"
@@ -136,7 +134,7 @@ paths:
           schema:
             type: integer
             default: 5
-          description: Max number of spotlight events
+
         - name: page
           in: query
           required: false
@@ -150,7 +148,7 @@ paths:
           schema:
             type: boolean
             default: true
-          description: Whether to include non-spotlight events
+
       responses:
         "200":
           description: Spotlight response
@@ -206,7 +204,7 @@ paths:
 
   /ozzu/domains/{domainId}/events:
     post:
-      tags: [Events]
+      tags: [ Events ]
       summary: Create event/match
       parameters:
         - $ref: "#/components/parameters/DomainId"
@@ -226,29 +224,59 @@ paths:
 
     get:
       tags: [ Events ]
-      summary: List scheduled events for domain
+      summary: List events for domain
+      description: |
+        Returns list of events for a domain.
+
+        Supports filtering by:
+        - seriesId
+        - teamId
+        - fromDate
+        - toDate
+        - status
+
+        Response uses the same event shape as Spotlight.
       parameters:
         - $ref: "#/components/parameters/DomainId"
+
         - name: seriesId
           in: query
-          schema: { type: string, format: uuid }
+          required: false
+          schema:
+            type: string
+            format: uuid
+
         - name: teamId
           in: query
-          schema: { type: string, format: uuid }
+          required: false
+          schema:
+            type: string
+            format: uuid
+
         - name: fromDate
           in: query
-          schema: { type: string, format: date }
+          required: false
+          schema:
+            type: string
+            format: date
+
         - name: toDate
           in: query
-          schema: { type: string, format: date }
+          required: false
+          schema:
+            type: string
+            format: date
+
         - name: status
           in: query
           required: false
           schema:
             type: string
             enum: [ SCHEDULED, LIVE, COMPLETED, CANCELED ]
+
         - $ref: "#/components/parameters/Limit"
         - $ref: "#/components/parameters/Cursor"
+
       responses:
         "200":
           description: Events list
@@ -257,19 +285,24 @@ paths:
               schema:
                 $ref: "#/components/schemas/EventListResponse"
 
+
   /ozzu/domains/{domainId}/events/{eventId}:
     get:
-      tags: [Events]
-      summary: Event Page
-      description: >
-        Returns event info and can include scorecard/lineup tabs, user wager summary,
-        celebrity wagers, shorts, and Info summary ("top N predictions in play") via internalProperties.
+      tags: [ Events ]
+      summary: Event page
+      description: |
+        Returns a single event.
+
+        The response uses the same event object returned in the events list.
+
+        If the event is completed and a detailed score sheet is available,
+        eventScores is returned in addition to scoreSummary.
       parameters:
         - $ref: "#/components/parameters/DomainId"
         - $ref: "#/components/parameters/EventId"
       responses:
         "200":
-          description: Event
+          description: Event page response
           content:
             application/json:
               schema:
@@ -546,10 +579,12 @@ paths:
 
   /ozzu/domains/{domainId}/events/{eventId}/wagers:
     post:
-      tags: [Wagers]
-      summary: Create wager (up to 5 cards)
-      description: >
-        Server credits P2E for wager creation (e.g., +50 tokens) per MVP rules.
+      tags: [ Wagers ]
+      summary: Create wager
+      description: |
+        Creates a wager for an event.
+        Input uses direct wagerCards and bindings.
+        Maximum 5 wager cards are allowed per wager.
       parameters:
         - $ref: "#/components/parameters/DomainId"
         - $ref: "#/components/parameters/EventId"
@@ -569,16 +604,39 @@ paths:
 
   /ozzu/domains/{domainId}/actions/getWagers:
     get:
-      tags: [Wagers]
-      summary: Get my wagers (active and past) for domain
+      tags: [ Wagers ]
+      summary: Get wagers for domain
+      description: |
+        Returns wagers across all events in this domain.
+
+        If userId is passed, returns wagers only for that user.
+
+        Each wager includes wagerCards and their binding picks.
       parameters:
         - $ref: "#/components/parameters/DomainId"
-        - $ref: "#/components/parameters/Limit"
-        - $ref: "#/components/parameters/Cursor"
-        - $ref: "#/components/parameters/QueryUserId"
+
+        - name: userId
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 20
+
+        - name: cursor
+          in: query
+          required: false
+          schema:
+            type: string
       responses:
         "200":
-          description: Wager list with pagination
+          description: Wagers response
           content:
             application/json:
               schema:
@@ -605,18 +663,19 @@ paths:
                 $ref: "#/components/schemas/WagerCardType"
     get:
       tags: [ WagerCardsLCM ]
-      summary: List wager card types (templates) for domain
+      summary: List wager card types for domain
+      description: |
+        Returns wager card types for a domain.
+        Each wager card type includes its bindings.
       parameters:
         - $ref: "#/components/parameters/DomainId"
       responses:
         "200":
-          description: Wager card types list
+          description: Wager card types response
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/WagerCardType"
+                $ref: "#/components/schemas/WagerCardTypeListResponse"
 
   /ozzu/domains/{domainId}/wagerCards/{wagerCardTypeId}:
     get:
@@ -661,13 +720,11 @@ paths:
         - $ref: "#/components/parameters/WagerCardTypeId"
       responses:
         "200":
-          description: Wager card type bindings
+          description: Wager card type bindings response
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/WagerCardTypeBinding"
+                $ref: "#/components/schemas/WagerCardTypeBindingListResponse"
 
   /ozzu/domains/{domainId}/lounges:
     post:
@@ -1227,6 +1284,7 @@ components:
         providerUserId: { type: string }
         timeCreated: { $ref: "#/components/schemas/Timestamp" }
         timeUpdated: { $ref: "#/components/schemas/Timestamp" }
+        imageUrl: {type: string, format: url}
         internalProperties:
           $ref: "#/components/schemas/InternalProperties"
 
@@ -1284,93 +1342,138 @@ components:
         contextualFacet:
           $ref: "#/components/schemas/ContextualFacet"
 
-    SpotlightItem:
+    SpotlightResponse:
+      type: object
+      properties:
+        events:
+          type: array
+          items:
+            $ref: "#/components/schemas/SpotlightEvent"
+        pagination:
+          $ref: "#/components/schemas/Pagination"
+        tokens:
+          type: integer
+          format: int64
+          description: Logged-in user's available token balance
+
+    SpotlightEvent:
       type: object
       properties:
         id:
           type: string
-        responseType:
-          $ref: "#/components/schemas/SpotlightItemType"
+          format: uuid
+        domainId:
+          type: string
+          format: uuid
+        seriesId:
+          type: string
+          format: uuid
+        seriesName:
+          type: string
+        name:
+          type: string
+        eventImageUrl:
+          type: string
+        eventLocation:
+          type: string
+        venue:
+          type: string
+        description:
+          type: string
+        timeCreated:
+          type: string
+          format: date-time
+        timeUpdated:
+          type: string
+          format: date-time
+        timeEventStart:
+          type: string
+          format: date-time
+        timeEventEnd:
+          type: string
+          format: date-time
+        isEventCanceled:
+          type: boolean
+        isEventCompleted:
+          type: boolean
+        isSpotlight:
+          type: boolean
+        usersCount:
+          type: integer
+          format: int64
+          description: Number of users who participated/wagered
+        potAmount:
+          type: integer
+          description: Total pot amount for this event
+        userWager:
+          $ref: "#/components/schemas/SpotlightUserWager"
+        internalProperties:
+          type: object
+          additionalProperties: true
+        teams:
+          type: array
+          items:
+            $ref: "#/components/schemas/SpotlightTeam"
+        scoreSummary:
+          $ref: "#/components/schemas/ScoreSummary"
+
+    SpotlightTeam:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        domainId:
+          type: string
+          format: uuid
+        seriesId:
+          type: string
+          format: uuid
         name:
           type: string
         description:
           type: string
-        timeBegin:
+        teamImageUrl:
           type: string
-          format: date-time
-        timeEnd:
+        score:
           type: string
-          format: date-time
-        content:
-          type: object
-          description: |
-            Dynamic content based on responseType.
-            ----
-            SPOTLIGHT_GAME:
-              eventId: string
-              isSpotlight: boolean
-              status: string (SCHEDULED, LIVE, COMPLETED)
-              series: string
-              venue: string
-              location: string
-              eventImageUrl: string
-              teamA:
-                id: string
-                name: string
-                logoUrl: string
-                score: string
-              teamB:
-                id: string
-                name: string
-                logoUrl: string
-                score: string
-              usersCount: number
-              potAmount: number
-              userWager:
-                amount: number
-                outcome: string (PENDING, WON, LOST)
-            ----
-            INFO_BLOCK:
-              tokens: number
-            ----
-            SHORTS:
-              videoUrl: string
-              thumbnailUrl: string
-            ----
-            CELEBRITY_WAGERS:
-              name: string
-              wagerAmount: number
-              prediction: string
-          additionalProperties: true
-        pageCount:
-          type: integer
-        totalItems:
-          type: integer
-        nextPage:
-          type: integer
-        prevPage:
-          type: integer
-        requestId:
-          type: string
-        responseTime:
-          type: integer
-        internalProperties:
-          type: object
-          additionalProperties: true
+          description: Display score for the team, if available
 
-    SpotlightResponse:
+    SpotlightUserWager:
       type: object
       properties:
-        pagination:
-          $ref: "#/components/schemas/Pagination"
-        items:
+        amount:
+          type: integer
+        outcome:
+          type: string
+
+    ScoreSummary:
+      type: object
+      properties:
+        innings:
           type: array
           items:
-            $ref: "#/components/schemas/SpotlightItem"
+            $ref: "#/components/schemas/InningsScore"
 
-        internalProperties:
-          type: object
-          additionalProperties: true
+    InningsScore:
+      type: object
+      properties:
+        team:
+          type: string
+        inningNumber:
+          type: integer
+        runs:
+          type: integer
+        wickets:
+          type: integer
+        overs:
+          type: number
+          format: double
+        runRate:
+          type: number
+          format: double
+        isCompleted:
+          type: boolean
 
     Pagination:
       type: object
@@ -1441,26 +1544,10 @@ components:
         seriesId: { $ref: "#/components/schemas/UUID" }
         timeEventStart: { $ref: "#/components/schemas/Timestamp" }
         timeEventEnd: { $ref: "#/components/schemas/Timestamp" }
-        internalProperties:
-          $ref: "#/components/schemas/InternalProperties"
-
-    Event:
-      type: object
-      properties:
-        id: { $ref: "#/components/schemas/UUID" }
-        domainId: { $ref: "#/components/schemas/UUID" }
-        seriesId: { $ref: "#/components/schemas/UUID" }
-        name: { type: string }
-        description: { type: string }
-        timeCreated: { $ref: "#/components/schemas/Timestamp" }
-        timeUpdated: { $ref: "#/components/schemas/Timestamp" }
-        timeEventStart: { $ref: "#/components/schemas/Timestamp" }
-        timeEventEnd: { $ref: "#/components/schemas/Timestamp" }
-        isEventCanceled: { type: boolean }
-        isEventCompleted: { type: boolean }
-        objectType: { type: string }
-        objectProfile: { type: string }
-        objectStatus: { type: string }
+        image:
+          type: string
+          format: binary
+          description: Base64 encoded profile photo
         internalProperties:
           $ref: "#/components/schemas/InternalProperties"
 
@@ -1477,30 +1564,6 @@ components:
         role: { type: string }
         internalProperties:
           $ref: "#/components/schemas/InternalProperties"
-
-    EventPageResponse:
-      allOf:
-        - $ref: "#/components/schemas/Event"
-        - type: object
-          properties:
-            scorecard:
-              $ref: "#/components/schemas/Scorecard"
-            lineup:
-              type: array
-              items:
-                $ref: "#/components/schemas/LineupEntry"
-            myWagerSummary:
-              $ref: "#/components/schemas/InternalProperties"
-            celebrityWagers:
-              type: array
-              items:
-                $ref: "#/components/schemas/Wager"
-            shorts:
-              type: array
-              items:
-                $ref: "#/components/schemas/Artifact"
-            info:
-              $ref: "#/components/schemas/InternalProperties"
 
     Player:
       type: object
@@ -1523,6 +1586,10 @@ components:
       properties:
         name: { type: string }
         description: { type: string }
+        image:
+          type: string
+          format: binary
+          description: Base64 encoded profile photo
         internalProperties:
           $ref: "#/components/schemas/InternalProperties"
 
@@ -1534,6 +1601,7 @@ components:
         seriesId: { $ref: "#/components/schemas/UUID" }
         name: { type: string }
         description: { type: string }
+        imageUrl: {type: string, format: url}
         timeCreated: { $ref: "#/components/schemas/Timestamp" }
         timeUpdated: { $ref: "#/components/schemas/Timestamp" }
         internalProperties:
@@ -1605,9 +1673,13 @@ components:
 
     WagerCreateRequest:
       type: object
-      required: [ name, wagerNarrativeDetails, stakeTokens ]
+      required:
+        - name
+        - stakeTokens
+        - wagerCards
       properties:
-        name: { type: string }
+        name:
+          type: string
         stakeTokens:
           type: integer
           minimum: 0
@@ -1617,13 +1689,51 @@ components:
           minimum: 0
           maximum: 10000
           default: 50
-          description: Allowed slippage in basis points (50 = 0.50%)
-        wagerNarrativeDetails:
+          description: Allowed slippage in basis points. 50 means 0.50%.
+        wagerCards:
           type: array
+          minItems: 1
+          maxItems: 5
           items:
-            $ref: "#/components/schemas/WagerNarrativeDetail"
+            $ref: "#/components/schemas/WagerCreateCardRequest"
         internalProperties:
           $ref: "#/components/schemas/InternalProperties"
+
+    WagerCreateCardRequest:
+      type: object
+      required:
+        - wagerCardTypeId
+        - bindings
+      properties:
+        wagerCardTypeId:
+          $ref: "#/components/schemas/UUID"
+        bindings:
+          type: array
+          minItems: 1
+          items:
+            $ref: "#/components/schemas/WagerCreateCardBindingRequest"
+
+    WagerCreateCardBindingRequest:
+      type: object
+      required:
+        - wagerCardTypeBindingId
+      properties:
+        wagerCardTypeBindingId:
+          $ref: "#/components/schemas/UUID"
+        conceptId:
+          $ref: "#/components/schemas/UUID"
+          description: Concept term id. Kept as conceptId in request for frontend simplicity.
+        playerId:
+          $ref: "#/components/schemas/UUID"
+        teamId:
+          $ref: "#/components/schemas/UUID"
+        scopedReferentId:
+          $ref: "#/components/schemas/UUID"
+        value:
+          type: string
+        pickPayload:
+          type: object
+          additionalProperties: true
 
     OddsQuoteResponse:
       type: object
@@ -1712,7 +1822,11 @@ components:
 
     WagerStatus:
       type: string
-      enum: [DRAFT, PLACED, WON, LOST, VOID, CANCELED]
+      enum: [ CREATED, PLACED, LOCKED, SETTLED, CANCELED ]
+
+    outcome:
+      type: string
+      enum: [ PENDING, WON, LOST, VOID ]
 
     WagerNarrativeDetail:
       type: object
@@ -1752,23 +1866,43 @@ components:
     Wager:
       type: object
       properties:
-        id: { $ref: "#/components/schemas/UUID" }
-        domainId: { $ref: "#/components/schemas/UUID" }
-        eventId: { $ref: "#/components/schemas/UUID" }
-        userId: { $ref: "#/components/schemas/UUID" }
-        name: { type: string }
-        status: { $ref: "#/components/schemas/WagerStatus" }
-        isCelebrity: { type: boolean, default: false }
-        celebrityLabel: { type: string }
-        outcome: {type: string}
-        stakeTokens: { type: integer }
-        payoutTokens: { type: integer }
+        id:
+          $ref: "#/components/schemas/UUID"
+        domainId:
+          $ref: "#/components/schemas/UUID"
+        eventId:
+          $ref: "#/components/schemas/UUID"
+        userId:
+          $ref: "#/components/schemas/UUID"
+        name:
+          type: string
+        status:
+          $ref: "#/components/schemas/WagerStatus"
+        isCelebrity:
+          type: boolean
+          default: false
+        celebrityLabel:
+          type: string
+        outcome:
+          type: string
+        stakeTokens:
+          type: integer
+        payoutTokens:
+          type: integer
         narrative:
           $ref: "#/components/schemas/InternalProperties"
-        timeCreated: { $ref: "#/components/schemas/Timestamp" }
-        timeUpdated: { $ref: "#/components/schemas/Timestamp" }
+        wagerCards:
+          type: array
+          items:
+            $ref: "#/components/schemas/WagerCard"
+        timeCreated:
+          $ref: "#/components/schemas/Timestamp"
+        timeUpdated:
+          $ref: "#/components/schemas/Timestamp"
         internalProperties:
           $ref: "#/components/schemas/InternalProperties"
+
+
 
     WagerCardTypeCreateRequest:
       type: object
@@ -1780,16 +1914,132 @@ components:
         internalProperties:
           $ref: "#/components/schemas/InternalProperties"
 
+    WagerCardTypeListResponse:
+      type: object
+      properties:
+        domainId:
+          $ref: "#/components/schemas/UUID"
+        wagerCardTypes:
+          type: array
+          items:
+            $ref: "#/components/schemas/WagerCardType"
+
+    WagerCardTypeBindingListResponse:
+      type: object
+      properties:
+        domainId:
+          $ref: "#/components/schemas/UUID"
+        wagerCardTypeId:
+          $ref: "#/components/schemas/UUID"
+        wagerCardTypeBindings:
+          type: array
+          items:
+            $ref: "#/components/schemas/WagerCardTypeBinding"
+
     WagerCardType:
       type: object
       properties:
-        id: { $ref: "#/components/schemas/UUID" }
-        domainId: { $ref: "#/components/schemas/UUID" }
-        name: { type: string }
-        description: { type: string }
-        maxBindings: { type: integer }
-        timeCreated: { $ref: "#/components/schemas/Timestamp" }
-        timeUpdated: { $ref: "#/components/schemas/Timestamp" }
+        id:
+          $ref: "#/components/schemas/UUID"
+        domainId:
+          $ref: "#/components/schemas/UUID"
+        name:
+          type: string
+        description:
+          type: string
+        maxBindings:
+          type: integer
+        bindings:
+          type: array
+          items:
+            $ref: "#/components/schemas/WagerCardTypeBinding"
+        timeCreated:
+          $ref: "#/components/schemas/Timestamp"
+        timeUpdated:
+          $ref: "#/components/schemas/Timestamp"
+        internalProperties:
+          $ref: "#/components/schemas/InternalProperties"
+
+    WagerCardTypeBinding:
+      type: object
+      properties:
+        id:
+          $ref: "#/components/schemas/UUID"
+        wagerCardTypeId:
+          $ref: "#/components/schemas/UUID"
+        conceptTermId:
+          $ref: "#/components/schemas/UUID"
+        isOptional:
+          type: boolean
+        groupAffiliation:
+          type: string
+        pointsValue:
+          type: integer
+        timeCreated:
+          $ref: "#/components/schemas/Timestamp"
+        timeUpdated:
+          $ref: "#/components/schemas/Timestamp"
+        internalProperties:
+          $ref: "#/components/schemas/InternalProperties"
+
+    WagerCard:
+      type: object
+      properties:
+        id:
+          $ref: "#/components/schemas/UUID"
+        wagerId:
+          $ref: "#/components/schemas/UUID"
+        wagerCardTypeId:
+          $ref: "#/components/schemas/UUID"
+        wagerCardStatus:
+          type: string
+        bindings:
+          type: array
+          items:
+            $ref: "#/components/schemas/WagerCardBinding"
+        timeCreated:
+          $ref: "#/components/schemas/Timestamp"
+        timeUpdated:
+          $ref: "#/components/schemas/Timestamp"
+        internalProperties:
+          $ref: "#/components/schemas/InternalProperties"
+
+    WagerCardBinding:
+      type: object
+      properties:
+        id:
+          $ref: "#/components/schemas/UUID"
+        wagerCardId:
+          $ref: "#/components/schemas/UUID"
+        wagerCardTypeBindingId:
+          $ref: "#/components/schemas/UUID"
+        conceptTermId:
+          $ref: "#/components/schemas/UUID"
+        scopedReferentId:
+          $ref: "#/components/schemas/UUID"
+        playerId:
+          $ref: "#/components/schemas/UUID"
+        teamId:
+          $ref: "#/components/schemas/UUID"
+        value:
+          type: string
+        entityType:
+          type: string
+        entityLabel:
+          type: string
+        pickPayload:
+          type: object
+          additionalProperties: true
+        lockedDecimalOdds:
+          type: number
+        lockedOddsSource:
+          type: string
+        lockedAt:
+          $ref: "#/components/schemas/Timestamp"
+        timeCreated:
+          $ref: "#/components/schemas/Timestamp"
+        timeUpdated:
+          $ref: "#/components/schemas/Timestamp"
         internalProperties:
           $ref: "#/components/schemas/InternalProperties"
 
@@ -1801,20 +2051,6 @@ components:
         isOptional: { type: boolean, default: false }
         groupAffiliation: { type: string }
         pointsValue: { type: integer, default: 0 }
-        internalProperties:
-          $ref: "#/components/schemas/InternalProperties"
-
-    WagerCardTypeBinding:
-      type: object
-      properties:
-        id: { $ref: "#/components/schemas/UUID" }
-        wagerCardTypeId: { $ref: "#/components/schemas/UUID" }
-        conceptTermId: { $ref: "#/components/schemas/UUID" }
-        isOptional: { type: boolean }
-        groupAffiliation: { type: string }
-        pointsValue: { type: integer }
-        timeCreated: { $ref: "#/components/schemas/Timestamp" }
-        timeUpdated: { $ref: "#/components/schemas/Timestamp" }
         internalProperties:
           $ref: "#/components/schemas/InternalProperties"
 
@@ -2034,21 +2270,22 @@ components:
     WagerListResponse:
       type: object
       properties:
-        items:
+        wagers:
           type: array
           items:
             $ref: "#/components/schemas/Wager"
         nextCursor:
           type: string
           nullable: true
-          description: Cursor for next page (omit or null if none)
         hasMore:
           type: boolean
+        internalProperties:
+          $ref: "#/components/schemas/InternalProperties"
 
     EventListResponse:
       type: object
       properties:
-        items:
+        events:
           type: array
           items:
             $ref: "#/components/schemas/Event"
@@ -2059,6 +2296,127 @@ components:
           type: boolean
         internalProperties:
           $ref: "#/components/schemas/InternalProperties"
+
+    Event:
+      type: object
+      properties:
+        id:
+          $ref: "#/components/schemas/UUID"
+        domainId:
+          $ref: "#/components/schemas/UUID"
+        seriesId:
+          $ref: "#/components/schemas/UUID"
+        seriesName:
+          type: string
+
+        name:
+          type: string
+        description:
+          type: string
+
+        eventImageUrl:
+          type: string
+          format: uri
+        eventLocation:
+          type: string
+        venue:
+          type: string
+
+        timeCreated:
+          $ref: "#/components/schemas/Timestamp"
+        timeUpdated:
+          $ref: "#/components/schemas/Timestamp"
+        timeEventStart:
+          $ref: "#/components/schemas/Timestamp"
+        timeEventEnd:
+          $ref: "#/components/schemas/Timestamp"
+
+        isEventCanceled:
+          type: boolean
+        isEventCompleted:
+          type: boolean
+        isSpotlight:
+          type: boolean
+
+        objectType:
+          type: string
+        objectProfile:
+          type: string
+        objectStatus:
+          type: string
+
+        usersCount:
+          type: integer
+          format: int64
+          description: Number of users who participated/wagered
+        potAmount:
+          type: integer
+          description: Total pot amount for this event
+
+        userWager:
+          $ref: "#/components/schemas/EventUserWager"
+
+        teams:
+          type: array
+          items:
+            $ref: "#/components/schemas/EventTeam"
+
+        scoreSummary:
+          $ref: "#/components/schemas/ScoreSummary"
+
+        internalProperties:
+          $ref: "#/components/schemas/InternalProperties"
+
+    EventPageResponse:
+      allOf:
+        - $ref: "#/components/schemas/Event"
+        - type: object
+          properties:
+            eventScores:
+              $ref: "#/components/schemas/EventScores"
+            lineup:
+              type: array
+              items:
+                $ref: "#/components/schemas/LineupEntry"
+            myWagerSummary:
+              type: object
+              additionalProperties: true
+
+    EventTeam:
+      type: object
+      properties:
+        id:
+          $ref: "#/components/schemas/UUID"
+        domainId:
+          $ref: "#/components/schemas/UUID"
+        seriesId:
+          $ref: "#/components/schemas/UUID"
+        name:
+          type: string
+        description:
+          type: string
+        teamImageUrl:
+          type: string
+          format: uri
+        score:
+          type: string
+
+    EventUserWager:
+      type: object
+      properties:
+        amount:
+          type: integer
+        outcome:
+          type: string
+
+    EventScores:
+      type: object
+      description: |
+        Detailed event score sheet.
+
+        Returned mainly for completed matches when full scorecard data is available.
+        Shape can vary by sport, so this is flexible.
+      additionalProperties: true
 
     PlayerCreateRequest:
       type: object

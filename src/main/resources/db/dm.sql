@@ -1424,3 +1424,47 @@ ALTER TABLE relationships ADD COLUMN updated_at timestamptz NOT NULL DEFAULT now
 ALTER TABLE wager_state_events ADD COLUMN event_id uuid;
 
 ALTER TABLE wager_state_events ALTER COLUMN request_id type uuid USING request_id::uuid;
+
+ALTER TABLE teams ADD COLUMN team_photo_url TEXT;
+
+ALTER TABLE events
+    ADD CONSTRAINT fk_events_team_a
+        FOREIGN KEY (team_a_id) REFERENCES teams(id) ON DELETE SET NULL;
+
+ALTER TABLE events
+    ADD CONSTRAINT fk_events_team_b
+        FOREIGN KEY (team_b_id) REFERENCES teams(id) ON DELETE SET NULL;
+
+CREATE INDEX IF NOT EXISTS ix_events_team_a ON events(team_a_id);
+CREATE INDEX IF NOT EXISTS ix_events_team_b ON events(team_b_id);
+CREATE INDEX IF NOT EXISTS ix_events_spotlight ON events(domain_id, is_spotlight, time_event_start DESC);
+
+ALTER TABLE wager_card_type_bindings
+    ADD COLUMN IF NOT EXISTS is_optional boolean NOT NULL DEFAULT false,
+    ADD COLUMN IF NOT EXISTS group_affiliation text,
+    ADD COLUMN IF NOT EXISTS points_value integer NOT NULL DEFAULT 0,
+    ADD COLUMN IF NOT EXISTS updated_at timestamptz NOT NULL DEFAULT now();
+
+ALTER TABLE wager_card_types
+    ADD COLUMN IF NOT EXISTS max_bindings integer;
+
+ALTER TABLE wager_card_bindings
+    ADD COLUMN IF NOT EXISTS concept_term_id uuid,
+    ADD COLUMN IF NOT EXISTS updated_at timestamptz NOT NULL DEFAULT now(),
+    ADD COLUMN IF NOT EXISTS internal_properties jsonb NOT NULL DEFAULT '{}'::jsonb;
+
+ALTER TABLE wager_cards
+    ADD COLUMN IF NOT EXISTS status text,
+    ADD COLUMN IF NOT EXISTS internal_properties jsonb NOT NULL DEFAULT '{}'::jsonb,
+    ADD COLUMN IF NOT EXISTS updated_at timestamptz NOT NULL DEFAULT now();
+
+DO $$
+    BEGIN
+        IF NOT EXISTS (
+            SELECT 1 FROM pg_constraint WHERE conname = 'fk_wcb_concept_term'
+        ) THEN
+            ALTER TABLE wager_card_bindings
+                ADD CONSTRAINT fk_wcb_concept_term
+                    FOREIGN KEY (concept_term_id) REFERENCES concept_terms(id) ON DELETE RESTRICT;
+        END IF;
+    END$$;

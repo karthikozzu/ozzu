@@ -116,4 +116,6 @@ WHERE w.userId = :userId
 AND w.eventId IN :eventIds
 """)
     List<WagerEntity> findByUserIdAndEventIdIn(@Param("userId")UUID userId, @Param("eventIds")List<UUID> eventIds);
+
+    Optional<WagerEntity> findByEventIdAndId(UUID eventId, UUID id);
 }

@@ -6,6 +6,7 @@ import ai.ozzu.api.generated.model.WagerCreateRequest;
 import ai.ozzu.api.generated.model.WagerListResponse;
 import ai.ozzu.api.service.WagerService;
 import jakarta.servlet.http.HttpServletRequest;
+import org.openapitools.jackson.nullable.JsonNullable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -23,19 +24,14 @@ public class WagersController implements WagersApi {
     }
 
     @Override
-    public ResponseEntity<WagerListResponse> ozzuDomainsDomainIdActionsGetWagersGet(UUID domainId,
-                                                                              Integer limit,
-                                                                              String cursor, UUID userId) {
-        // default guard
+    public ResponseEntity<WagerListResponse> ozzuDomainsDomainIdActionsGetWagersGet(UUID domainId, UUID userId, Integer limit, String cursor) {
+
         int pageSize = (limit == null || limit <= 0) ? 20 : Math.min(limit, 100);
-
         var page = wagerService.getWagersPaginated(domainId, pageSize, cursor, userId);
-
-        WagerListResponse resp = new WagerListResponse()
-                .items(page.items())
-                .nextCursor(page.nextCursor())
-                .hasMore(page.hasMore());
-
+        WagerListResponse resp = new WagerListResponse();
+        resp.setWagers(page.items());
+        resp.setNextCursor(JsonNullable.of(page.nextCursor()));
+        resp.setHasMore(page.hasMore());
         return ResponseEntity.ok(resp);
     }
 
@@ -47,7 +43,8 @@ public class WagersController implements WagersApi {
     ) {
         String idemKey = resolveHeader("Idempotency-Key");
         Wager out = wagerService.create(domainId, eventId, idemKey, wagerCreateRequest);
-        return ResponseEntity.ok(out);
+        return ResponseEntity.status(201).body(out);
+
     }
 
     private String resolveHeader(String name) {

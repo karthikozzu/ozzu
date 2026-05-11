@@ -3,8 +3,13 @@ package ai.ozzu.api.service;
 import ai.ozzu.api.generated.model.WagerCardType;
 import ai.ozzu.api.generated.model.WagerCardTypeBinding;
 import ai.ozzu.api.generated.model.WagerCardTypeBindingCreateRequest;
+import ai.ozzu.api.generated.model.WagerCardTypeBindingListResponse;
 import ai.ozzu.api.generated.model.WagerCardTypeCreateRequest;
-import ai.ozzu.api.persistence.entity.*;
+import ai.ozzu.api.generated.model.WagerCardTypeListResponse;
+import ai.ozzu.api.persistence.entity.ConceptTermEntity;
+import ai.ozzu.api.persistence.entity.DomainEntity;
+import ai.ozzu.api.persistence.entity.WagerCardTypeBindingEntity;
+import ai.ozzu.api.persistence.entity.WagerCardTypeEntity;
 import ai.ozzu.api.persistence.repo.ConceptTermRepository;
 import ai.ozzu.api.persistence.repo.DomainRepository;
 import ai.ozzu.api.persistence.repo.WagerCardTypeBindingRepository;
@@ -40,15 +45,29 @@ public class WagerCardTypeService {
     }
 
     @Transactional(readOnly = true)
+    public WagerCardTypeListResponse listCardTypesResponse(UUID domainId) {
+        log.info("Listing wager card type response: domainId={}", domainId);
+
+        List<WagerCardType> cardTypes = listCardTypes(domainId);
+
+        WagerCardTypeListResponse response = new WagerCardTypeListResponse();
+        response.setDomainId(domainId);
+        response.setWagerCardTypes(cardTypes);
+
+        return response;
+    }
+
+    @Transactional(readOnly = true)
     public List<WagerCardType> listCardTypes(UUID domainId) {
         log.info("Listing wager card types: domainId={}", domainId);
 
         List<WagerCardType> types = cardTypeRepo.findByDomain_Id(domainId)
                 .stream()
-                .map(this::toApi)
+                .map(this::toApiWithBindings)
                 .toList();
 
         log.info("Found {} wager card types: domainId={}", types.size(), domainId);
+
         return types;
     }
 
@@ -61,6 +80,10 @@ public class WagerCardTypeService {
                     log.warn("Domain not found while creating wager card type: domainId={}", domainId);
                     return new IllegalArgumentException("Domain not found: " + domainId);
                 });
+
+        if (req == null) {
+            throw new IllegalArgumentException("WagerCardTypeCreateRequest is required");
+        }
 
         WagerCardTypeEntity e = new WagerCardTypeEntity();
         e.setDomain(domain);
@@ -77,7 +100,7 @@ public class WagerCardTypeService {
                 saved.getName()
         );
 
-        return toApi(saved);
+        return toApiWithBindings(saved);
     }
 
     @Transactional(readOnly = true)
@@ -85,13 +108,27 @@ public class WagerCardTypeService {
         log.info("Getting wager card type: domainId={}, typeId={}", domainId, typeId);
 
         WagerCardTypeEntity e = cardTypeRepo.findById(typeId)
-                .filter(ct -> ct.getDomain().getId().equals(domainId))
+                .filter(ct -> ct.getDomain() != null && ct.getDomain().getId().equals(domainId))
                 .orElseThrow(() -> {
                     log.warn("WagerCardType not found: domainId={}, typeId={}", domainId, typeId);
                     return new IllegalArgumentException("WagerCardType not found");
                 });
 
-        return toApi(e);
+        return toApiWithBindings(e);
+    }
+
+    @Transactional(readOnly = true)
+    public WagerCardTypeBindingListResponse listBindingsResponse(UUID domainId, UUID typeId) {
+        log.info("Listing wager card type binding response: domainId={}, typeId={}", domainId, typeId);
+
+        List<WagerCardTypeBinding> bindings = listBindings(domainId, typeId);
+
+        WagerCardTypeBindingListResponse response = new WagerCardTypeBindingListResponse();
+        response.setDomainId(domainId);
+        response.setWagerCardTypeId(typeId);
+        response.setWagerCardTypeBindings(bindings);
+
+        return response;
     }
 
     @Transactional(readOnly = true)
@@ -99,10 +136,13 @@ public class WagerCardTypeService {
         log.info("Listing wager card type bindings: domainId={}, typeId={}", domainId, typeId);
 
         WagerCardTypeEntity type = cardTypeRepo.findById(typeId)
-                .filter(ct -> ct.getDomain().getId().equals(domainId))
+                .filter(ct -> ct.getDomain() != null && ct.getDomain().getId().equals(domainId))
                 .orElseThrow(() -> {
-                    log.warn("WagerCardType not found while listing bindings: domainId={}, typeId={}",
-                            domainId, typeId);
+                    log.warn(
+                            "WagerCardType not found while listing bindings: domainId={}, typeId={}",
+                            domainId,
+                            typeId
+                    );
                     return new IllegalArgumentException("WagerCardType not found");
                 });
 
@@ -134,11 +174,18 @@ public class WagerCardTypeService {
                 req
         );
 
+        if (req == null) {
+            throw new IllegalArgumentException("WagerCardTypeBindingCreateRequest is required");
+        }
+
         WagerCardTypeEntity type = cardTypeRepo.findById(typeId)
-                .filter(ct -> ct.getDomain().getId().equals(domainId))
+                .filter(ct -> ct.getDomain() != null && ct.getDomain().getId().equals(domainId))
                 .orElseThrow(() -> {
-                    log.warn("WagerCardType not found while creating binding: domainId={}, typeId={}",
-                            domainId, typeId);
+                    log.warn(
+                            "WagerCardType not found while creating binding: domainId={}, typeId={}",
+                            domainId,
+                            typeId
+                    );
                     return new IllegalArgumentException("WagerCardType not found");
                 });
 
@@ -172,15 +219,36 @@ public class WagerCardTypeService {
         return toApi(saved);
     }
 
+    private WagerCardType toApiWithBindings(WagerCardTypeEntity e) {
+        WagerCardType api = toApi(e);
+
+        List<WagerCardTypeBinding> bindings = bindingRepo.findByWagerCardType_Id(e.getId())
+                .stream()
+                .map(this::toApi)
+                .toList();
+
+        api.setBindings(bindings);
+
+        return api;
+    }
+
     private WagerCardType toApi(WagerCardTypeEntity e) {
         log.debug("Mapping WagerCardTypeEntity to API model: wagerCardTypeId={}", e.getId());
 
         WagerCardType api = new WagerCardType();
+
         api.setId(e.getId());
-        api.setDomainId(e.getDomain().getId());
+        api.setDomainId(e.getDomain() != null ? e.getDomain().getId() : null);
         api.setName(e.getName());
         api.setDescription(e.getDescription());
+
+        //api.setMaxBindings(e.getMaxBindings());
+
+        api.setTimeCreated(e.getCreatedAt());
+        api.setTimeUpdated(e.getUpdatedAt());
+
         api.setInternalProperties(e.getInternalProperties());
+
         return api;
     }
 
@@ -188,10 +256,19 @@ public class WagerCardTypeService {
         log.debug("Mapping WagerCardTypeBindingEntity to API model: bindingId={}", e.getId());
 
         WagerCardTypeBinding api = new WagerCardTypeBinding();
+
         api.setId(e.getId());
-        api.setWagerCardTypeId(e.getWagerCardType().getId());
-        api.setConceptTermId(e.getConceptTerm().getId());
+        api.setWagerCardTypeId(e.getWagerCardType() != null ? e.getWagerCardType().getId() : null);
+        api.setConceptTermId(e.getConceptTerm() != null ? e.getConceptTerm().getId() : null);
+
+        //api.setIsOptional(e.getIsOptional());
+        //api.setGroupAffiliation(e.getGroupAffiliation());
+        //api.setPointsValue(e.getPointsValue());
+        api.setTimeCreated(e.getCreatedAt());
+        //api.setTimeUpdated(e.getUpdatedAt());
+
         api.setInternalProperties(e.getInternalProperties());
+
         return api;
     }
 }

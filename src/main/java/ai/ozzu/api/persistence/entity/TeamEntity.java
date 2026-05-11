@@ -35,6 +35,9 @@ public class TeamEntity extends AuditedEntity {
     @Column(nullable=false)
     private String name;
 
+    @Column(name="team_photo_url")
+    private String teamPhotoUrl;
+
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name="internal_properties", nullable=false, columnDefinition="jsonb")
     private Map<String, Object> internalProperties = Map.of();
@@ -73,5 +76,13 @@ public class TeamEntity extends AuditedEntity {
 
     public void setInternalProperties(Map<String, Object> internalProperties) {
         this.internalProperties = internalProperties;
+    }
+
+    public String getTeamPhotoUrl() {
+        return teamPhotoUrl;
+    }
+
+    public void setTeamPhotoUrl(String teamPhotoUrl) {
+        this.teamPhotoUrl = teamPhotoUrl;
     }
 }
