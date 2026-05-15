@@ -7,18 +7,22 @@ import com.google.api.client.json.gson.GsonFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
-import java.util.Collections;
+import java.util.List;
 
 @Service
 public class GoogleTokenVerifierService {
 
     private final GoogleIdTokenVerifier verifier;
 
-    public GoogleTokenVerifierService(@Value("${google.clientId}") String clientId) {
+    public GoogleTokenVerifierService(
+            @Value("${google.clientIds}") List<String> clientIds
+    ) {
         this.verifier = new GoogleIdTokenVerifier.Builder(
                 new NetHttpTransport(),
                 GsonFactory.getDefaultInstance()
-        ).setAudience(Collections.singletonList(clientId)).build();
+        )
+                .setAudience(clientIds)
+                .build();
     }
 
     public GoogleIdToken.Payload verifyOrNull(String idToken) {
