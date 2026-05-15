@@ -22,7 +22,7 @@ app:
     ttlMinutes: 120
 
 google:
-  clientIds: "129977490269-shuqvtr3m2l69t0verkbpk98q44v02qv.apps.googleusercontent.com,YOUR_ANDROID_CLIENT_ID.apps.googleusercontent.com,129977490269-p2sbsl2ejsfa68kahil4lkc9uedttbkk.apps.googleusercontent.com"
+  clientIds: "129977490269-shuqvtr3m2l69t0verkbpk98q44v02qv.apps.googleusercontent.com,129977490269-vj85eqabgf58rnrloetcvfqon4a5e54h.apps.googleusercontent.com,129977490269-p2sbsl2ejsfa68kahil4lkc9uedttbkk.apps.googleusercontent.com"
 
 aws:
   region: ap-south-1
