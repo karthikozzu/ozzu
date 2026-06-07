@@ -2,13 +2,15 @@ package ai.ozzu.api.controller;
 
 import ai.ozzu.api.generated.api.TeamsApi;
 import ai.ozzu.api.generated.model.Team;
-import ai.ozzu.api.generated.model.TeamCreateRequest;
+import ai.ozzu.api.persistence.models.TeamCreateRequest;
 import ai.ozzu.api.service.TeamsService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.context.request.NativeWebRequest;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -32,7 +34,15 @@ public class TeamsController implements TeamsApi {
     }
 
     @Override
-    public ResponseEntity<Team> ozzuDomainsDomainIdSeriesSeriesIdTeamsPost(UUID domainId, UUID seriesId, TeamCreateRequest teamCreateRequest) {
+    public ResponseEntity<Team> ozzuDomainsDomainIdSeriesSeriesIdTeamsPost(UUID domainId, UUID seriesId, String name,
+                                                                          String description,
+                                                                           MultipartFile image,
+                                                                           Map<String, Object> internalProperties) {
+        TeamCreateRequest teamCreateRequest = new TeamCreateRequest();
+        teamCreateRequest.setImage(image.getResource());
+        teamCreateRequest.setDescription(description);
+        teamCreateRequest.setInternalProperties(internalProperties);
+        teamCreateRequest.setName(name);
         Team created = teamsService.createTeam(domainId, seriesId, teamCreateRequest);
         return ResponseEntity.status(201).body(created);
     }
