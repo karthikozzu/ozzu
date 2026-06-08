@@ -1549,7 +1549,8 @@ components:
           format: binary
           description: Base64 encoded profile photo
         internalProperties:
-          $ref: "#/components/schemas/InternalProperties"
+          type: string
+          description: JSON Format
 
     Scorecard:
       type: object
@@ -1591,7 +1592,8 @@ components:
           format: binary
           description: Base64 encoded profile photo
         internalProperties:
-          $ref: "#/components/schemas/InternalProperties"
+          type: string
+          description: JSON Format
 
     Team:
       type: object
