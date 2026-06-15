@@ -1,8 +1,8 @@
 spring:
   datasource:
     url: jdbc:postgresql://ozzu-dev1.cpcumeo663ii.ap-south-1.rds.amazonaws.com:5432/ozzu_dev
-    username: postgres
-    password: postgres
+    username: ozzu_app_user
+    password: ozzu_stage_user
     hikari:
       pool-name: ozzu-hikari
       maximum-pool-size: 30          # start 20–50 depending on DB CPU
