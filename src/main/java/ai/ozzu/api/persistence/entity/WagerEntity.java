@@ -3,7 +3,15 @@ package ai.ozzu.api.persistence.entity;
 import ai.ozzu.api.persistence.enums.WagerOutcome;
 import ai.ozzu.api.persistence.enums.WagerStatus;
 import com.github.f4b6a3.uuid.UuidCreator;
-import jakarta.persistence.*;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.Id;
+import jakarta.persistence.IdClass;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreUpdate;
+import jakarta.persistence.Table;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
@@ -49,9 +57,6 @@ public class WagerEntity {
     @Column(name = "payout_tokens", nullable = false)
     private Integer payoutTokens = 0;
 
-    /**
-     * JSONB payload. If you prefer stronger typing, replace String with JsonNode.
-     */
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "narrative", nullable = false, columnDefinition = "jsonb")
     private String narrative = "{}";
@@ -69,8 +74,12 @@ public class WagerEntity {
     @Column(name = "created_at", nullable = false)
     private OffsetDateTime createdAt;
 
+    /**
+     * IMPORTANT:
+     * Do not use @Version on updatedAt.
+     * Keep updatedAt as a normal timestamp.
+     */
     @Column(name = "updated_at", nullable = false)
-    @Version
     private OffsetDateTime updatedAt;
 
     @PrePersist
@@ -78,87 +87,201 @@ public class WagerEntity {
         if (this.id == null) {
             this.id = UuidCreator.getTimeOrderedEpoch();
         }
-        var now = OffsetDateTime.now();
-        if (this.createdAt == null) this.createdAt = now;
-        if (this.updatedAt == null) this.updatedAt = now;
+
+        OffsetDateTime now = OffsetDateTime.now();
+
+        if (this.createdAt == null) {
+            this.createdAt = now;
+        }
+
+        if (this.updatedAt == null) {
+            this.updatedAt = now;
+        }
+
+        if (this.narrative == null || this.narrative.isBlank()) {
+            this.narrative = "{}";
+        }
+
+        if (this.internalProperties == null || this.internalProperties.isBlank()) {
+            this.internalProperties = "{}";
+        }
     }
 
     @PreUpdate
     void preUpdate() {
         this.updatedAt = OffsetDateTime.now();
+
+        if (this.narrative == null || this.narrative.isBlank()) {
+            this.narrative = "{}";
+        }
+
+        if (this.internalProperties == null || this.internalProperties.isBlank()) {
+            this.internalProperties = "{}";
+        }
     }
 
-    // =========================
-    // Getters / Setters
-    // =========================
+    public UUID getEventId() {
+        return eventId;
+    }
 
-    public UUID getEventId() { return eventId; }
-    public void setEventId(UUID eventId) { this.eventId = eventId; }
+    public void setEventId(UUID eventId) {
+        this.eventId = eventId;
+    }
 
-    public UUID getId() { return id; }
-    public void setId(UUID id) { this.id = id; }
+    public UUID getId() {
+        return id;
+    }
 
-    public UUID getDomainId() { return domainId; }
-    public void setDomainId(UUID domainId) { this.domainId = domainId; }
+    public void setId(UUID id) {
+        this.id = id;
+    }
 
-    public UUID getUserId() { return userId; }
-    public void setUserId(UUID userId) { this.userId = userId; }
+    public UUID getDomainId() {
+        return domainId;
+    }
 
-    public String getName() { return name; }
-    public void setName(String name) { this.name = name; }
+    public void setDomainId(UUID domainId) {
+        this.domainId = domainId;
+    }
 
-    public WagerStatus getStatus() { return status; }
-    public void setStatus(WagerStatus status) { this.status = status; }
+    public UUID getUserId() {
+        return userId;
+    }
 
-    public WagerOutcome getOutcome() { return outcome; }
-    public void setOutcome(WagerOutcome outcome) { this.outcome = outcome; }
+    public void setUserId(UUID userId) {
+        this.userId = userId;
+    }
 
-    public Integer getStakeTokens() { return stakeTokens; }
-    public void setStakeTokens(Integer stakeTokens) { this.stakeTokens = stakeTokens; }
+    public String getName() {
+        return name;
+    }
 
-    public Integer getPayoutTokens() { return payoutTokens; }
-    public void setPayoutTokens(Integer payoutTokens) { this.payoutTokens = payoutTokens; }
+    public void setName(String name) {
+        this.name = name;
+    }
 
-    public String getNarrative() { return narrative; }
-    public void setNarrative(String narrative) { this.narrative = (narrative == null ? "{}" : narrative); }
+    public WagerStatus getStatus() {
+        return status;
+    }
 
-    public String getInternalProperties() { return internalProperties; }
+    public void setStatus(WagerStatus status) {
+        this.status = status;
+    }
+
+    public WagerOutcome getOutcome() {
+        return outcome;
+    }
+
+    public void setOutcome(WagerOutcome outcome) {
+        this.outcome = outcome;
+    }
+
+    public Integer getStakeTokens() {
+        return stakeTokens;
+    }
+
+    public void setStakeTokens(Integer stakeTokens) {
+        this.stakeTokens = stakeTokens;
+    }
+
+    public Integer getPayoutTokens() {
+        return payoutTokens;
+    }
+
+    public void setPayoutTokens(Integer payoutTokens) {
+        this.payoutTokens = payoutTokens;
+    }
+
+    public String getNarrative() {
+        return narrative;
+    }
+
+    public void setNarrative(String narrative) {
+        this.narrative = narrative == null || narrative.isBlank() ? "{}" : narrative;
+    }
+
+    public String getInternalProperties() {
+        return internalProperties;
+    }
+
     public void setInternalProperties(String internalProperties) {
-        this.internalProperties = (internalProperties == null ? "{}" : internalProperties);
+        this.internalProperties = internalProperties == null || internalProperties.isBlank() ? "{}" : internalProperties;
     }
 
-    public boolean isCelebrity() { return isCelebrity; }
-    public void setCelebrity(boolean celebrity) { isCelebrity = celebrity; }
+    public boolean isCelebrity() {
+        return isCelebrity;
+    }
 
-    public String getCelebrityLabel() { return celebrityLabel; }
-    public void setCelebrityLabel(String celebrityLabel) { this.celebrityLabel = celebrityLabel; }
+    public void setCelebrity(boolean celebrity) {
+        isCelebrity = celebrity;
+    }
 
-    public OffsetDateTime getCreatedAt() { return createdAt; }
-    public void setCreatedAt(OffsetDateTime createdAt) { this.createdAt = createdAt; }
+    public String getCelebrityLabel() {
+        return celebrityLabel;
+    }
 
-    public OffsetDateTime getUpdatedAt() { return updatedAt; }
-    public void setUpdatedAt(OffsetDateTime updatedAt) { this.updatedAt = updatedAt; }
+    public void setCelebrityLabel(String celebrityLabel) {
+        this.celebrityLabel = celebrityLabel;
+    }
+
+    public OffsetDateTime getCreatedAt() {
+        return createdAt;
+    }
+
+    public void setCreatedAt(OffsetDateTime createdAt) {
+        this.createdAt = createdAt;
+    }
+
+    public OffsetDateTime getUpdatedAt() {
+        return updatedAt;
+    }
+
+    public void setUpdatedAt(OffsetDateTime updatedAt) {
+        this.updatedAt = updatedAt;
+    }
 
     public static class WagerPk implements java.io.Serializable {
         private UUID eventId;
         private UUID id;
 
-        public WagerPk() {}
+        public WagerPk() {
+        }
+
         public WagerPk(UUID eventId, UUID id) {
             this.eventId = eventId;
             this.id = id;
         }
 
-        public UUID getEventId() { return eventId; }
-        public UUID getId() { return id; }
+        public UUID getEventId() {
+            return eventId;
+        }
+
+        public UUID getId() {
+            return id;
+        }
+
+        public void setEventId(UUID eventId) {
+            this.eventId = eventId;
+        }
+
+        public void setId(UUID id) {
+            this.id = id;
+        }
 
         @Override
         public boolean equals(Object o) {
-            if (this == o) return true;
-            if (o == null || getClass() != o.getClass()) return false;
+            if (this == o) {
+                return true;
+            }
+
+            if (o == null || getClass() != o.getClass()) {
+                return false;
+            }
+
             WagerPk wagerPk = (WagerPk) o;
-            return Objects.equals(eventId, wagerPk.eventId) &&
-                    Objects.equals(id, wagerPk.id);
+
+            return Objects.equals(eventId, wagerPk.eventId)
+                    && Objects.equals(id, wagerPk.id);
         }
 
         @Override

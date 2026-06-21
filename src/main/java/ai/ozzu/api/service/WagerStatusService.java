@@ -5,6 +5,7 @@ import ai.ozzu.api.persistence.enums.WagerStateEventEntity;
 import ai.ozzu.api.persistence.enums.WagerStatus;
 import ai.ozzu.api.persistence.repo.WagerRepository;
 import ai.ozzu.api.persistence.repo.WagerStateEventRepository;
+import jakarta.persistence.EntityNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -18,13 +19,16 @@ public class WagerStatusService {
     private final WagerRepository wagerRepo;
     private final WagerStateEventRepository wagerStateEventRepo;
 
-    public WagerStatusService(WagerRepository wagerRepo, WagerStateEventRepository stateRepo) {
+    public WagerStatusService(
+            WagerRepository wagerRepo,
+            WagerStateEventRepository wagerStateEventRepo
+    ) {
         this.wagerRepo = wagerRepo;
-        this.wagerStateEventRepo = stateRepo;
+        this.wagerStateEventRepo = wagerStateEventRepo;
     }
 
     @Transactional
-    public void changeWagerStatus(
+    public WagerEntity changeWagerStatus(
             UUID eventId,
             UUID wagerId,
             WagerStatus newStatus,
@@ -32,31 +36,35 @@ public class WagerStatusService {
             String reason,
             Map<String, Object> metadata
     ) {
-        WagerEntity w = wagerRepo
-                .lockByEventIdAndId(eventId, wagerId)
-                .orElseThrow(() -> new IllegalArgumentException("Wager not found"));
+        WagerEntity wager = wagerRepo.lockByEventIdAndId(eventId, wagerId)
+                .orElseThrow(() -> new EntityNotFoundException("Wager not found"));
 
-        WagerStatus oldStatus = w.getStatus();
+        WagerStatus oldStatus = wager.getStatus();
 
         if (oldStatus == newStatus) {
-            return; // idempotent
+            return wager;
         }
 
         if (!WagerStatus.canTransition(oldStatus, newStatus)) {
             throw new IllegalStateException(
-                    "Invalid transition " + oldStatus + " → " + newStatus
+                    "Invalid wager transition " + oldStatus + " → " + newStatus
             );
         }
 
-        w.setStatus(newStatus);
-        w.setUpdatedAt(OffsetDateTime.now());
-
-        wagerRepo.save(w);
+        wager.setStatus(newStatus);
+        wager.setUpdatedAt(OffsetDateTime.now());
 
         wagerStateEventRepo.save(
                 WagerStateEventEntity.of(
-                        w, oldStatus, newStatus, actorUserId, reason, metadata
+                        wager,
+                        oldStatus,
+                        newStatus,
+                        actorUserId,
+                        reason,
+                        metadata == null ? Map.of() : metadata
                 )
         );
+
+        return wager;
     }
 }

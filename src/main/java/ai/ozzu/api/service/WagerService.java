@@ -19,6 +19,7 @@ import ai.ozzu.api.persistence.entity.WagerCardEntity;
 import ai.ozzu.api.persistence.entity.WagerCardTypeBindingEntity;
 import ai.ozzu.api.persistence.entity.WagerCardTypeEntity;
 import ai.ozzu.api.persistence.entity.WagerEntity;
+import ai.ozzu.api.persistence.enums.EventStatus;
 import ai.ozzu.api.persistence.enums.WagerStatus;
 import ai.ozzu.api.persistence.repo.DomainRepository;
 import ai.ozzu.api.persistence.repo.EventRepository;
@@ -133,6 +134,12 @@ public class WagerService {
         EventEntity event = eventRepo.findByIdAndDomainId(eventId, domainId)
                 .orElseThrow(() -> new IllegalArgumentException("Invalid event/domain"));
 
+        if (event.getStatus() != EventStatus.SCHEDULED) {
+            throw new IllegalStateException(
+                    "Wagers can be created only before event starts. Current event status: " + event.getStatus()
+            );
+        }
+
         UserEntity user = userRepo.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("Invalid userId"));
 
@@ -147,38 +154,46 @@ public class WagerService {
         wager.setUserId(userId);
         wager.setName(req.getName());
         wager.setStakeTokens(stake);
+
+        // Initial state
         wager.setStatus(WagerStatus.CREATED);
+
         wager.setInternalProperties(mapToJsonString(req.getInternalProperties()));
+        wager.setUpdatedAt(OffsetDateTime.now());
 
-        wager = wagerRepo.save(wager);
-
-        wagerStatusService.changeWagerStatus(
-                eventId,
-                wager.getId(),
-                WagerStatus.CREATED,
-                userId,
-                "wager_created",
-                Map.of(
-                        "stakeTokens", stake,
-                        "idemKeyPresent", idemKey != null && !idemKey.isBlank()
-                )
-        );
+        /*
+         * IMPORTANT:
+         * Use saveAndFlush so the wager row exists before inserting cards/bindings/ledger.
+         * Do NOT call wagerStatusService.changeWagerStatus(... CREATED ...).
+         */
+        wager = wagerRepo.saveAndFlush(wager);
 
         createCardsAndBindings(domainId, eventId, wager, req);
 
         try {
+            /*
+             * Debit tokens once.
+             * If stake is 0, your TokenLedgerService should ideally no-op safely.
+             */
             tokenLedgerService.debitStakeOnce(user, domain, event, wager, stake, idemKey);
 
-            wagerStatusService.changeWagerStatus(
-                    eventId,
-                    wager.getId(),
-                    WagerStatus.PLACED,
-                    userId,
-                    "stake_debited",
-                    Map.of("stakeTokens", stake)
-            );
+            /*
+             * Since this wager was created in this same transaction,
+             * do NOT re-lock it using wagerStatusService.
+             * Just update the managed entity directly.
+             */
+            WagerStatus oldStatus = wager.getStatus();
 
-            wager = wagerRepo.findByEventIdAndId(eventId, wager.getId()).orElse(wager);
+            if (!WagerStatus.canTransition(oldStatus, WagerStatus.PLACED)) {
+                throw new IllegalStateException(
+                        "Invalid transition " + oldStatus + " → " + WagerStatus.PLACED
+                );
+            }
+
+            wager.setStatus(WagerStatus.PLACED);
+            wager.setUpdatedAt(OffsetDateTime.now());
+
+            wager = wagerRepo.saveAndFlush(wager);
 
             log.info(
                     "wager.create.success domainId={} eventId={} wagerId={} userId={} stakeTokens={}",
@@ -191,17 +206,19 @@ public class WagerService {
 
         } catch (RuntimeException ex) {
             try {
-                wagerStatusService.changeWagerStatus(
-                        eventId,
-                        wager.getId(),
-                        WagerStatus.CANCELED,
-                        userId,
-                        "stake_debit_failed",
-                        Map.of(
-                                "stakeTokens", stake,
-                                "errorType", ex.getClass().getSimpleName()
-                        )
-                );
+                /*
+                 * Same here: do not call changeWagerStatus() during create.
+                 * Directly mark the newly-created wager as CANCELED.
+                 */
+                WagerStatus oldStatus = wager.getStatus();
+
+                if (oldStatus != WagerStatus.CANCELED
+                        && WagerStatus.canTransition(oldStatus, WagerStatus.CANCELED)) {
+                    wager.setStatus(WagerStatus.CANCELED);
+                    wager.setUpdatedAt(OffsetDateTime.now());
+                    wagerRepo.saveAndFlush(wager);
+                }
+
             } catch (RuntimeException statusEx) {
                 log.error(
                         "wager.create.debitFailed.statusCancelFailed eventId={} wagerId={} userId={} error={}",

@@ -308,6 +308,52 @@ paths:
               schema:
                 $ref: "#/components/schemas/EventPageResponse"
 
+  /ozzu/domains/{domainId}/events/{eventId}/status:
+    patch:
+      tags: [ Events ]
+      summary: Change event status
+      description: |
+        Changes event status.
+
+        Allowed transitions:
+        - SCHEDULED -> LIVE
+        - SCHEDULED -> CANCELED
+        - LIVE -> COMPLETED
+        - LIVE -> CANCELED
+
+        Side effects:
+        - When status becomes LIVE, all PLACED wagers for this event become LOCKED.
+        - When status becomes COMPLETED, all LOCKED wagers may be settled by the backend.
+        - When status becomes CANCELED, open wagers become CANCELED/VOID and stake may be refunded.
+      parameters:
+        - $ref: "#/components/parameters/DomainId"
+        - $ref: "#/components/parameters/EventId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EventStatusUpdateRequest"
+      responses:
+        "200":
+          description: Event status updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EventStatusUpdateResponse"
+        "400":
+          description: Invalid status transition
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "404":
+          description: Event not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
   /ozzu/domains/{domainId}/players:
     post:
       tags: [ Players ]
@@ -1700,6 +1746,48 @@ components:
             $ref: "#/components/schemas/WagerCreateCardRequest"
         internalProperties:
           $ref: "#/components/schemas/InternalProperties"
+    EventStatus:
+      type: string
+      enum: [ SCHEDULED, LIVE, COMPLETED, CANCELED ]
+
+    EventStatusUpdateRequest:
+      type: object
+      required:
+        - status
+      properties:
+        status:
+          $ref: "#/components/schemas/EventStatus"
+        reason:
+          type: string
+          description: Optional reason for status change.
+          example: Match started
+        internalProperties:
+          $ref: "#/components/schemas/InternalProperties"
+
+    EventStatusUpdateResponse:
+      type: object
+      properties:
+        id:
+          $ref: "#/components/schemas/UUID"
+        domainId:
+          $ref: "#/components/schemas/UUID"
+        status:
+          $ref: "#/components/schemas/EventStatus"
+        previousStatus:
+          $ref: "#/components/schemas/EventStatus"
+        lockedWagersCount:
+          type: integer
+          description: Number of wagers moved from PLACED to LOCKED when event became LIVE.
+        settledWagersCount:
+          type: integer
+          description: Number of wagers settled when event became COMPLETED.
+        canceledWagersCount:
+          type: integer
+          description: Number of wagers canceled when event became CANCELED.
+        timeUpdated:
+          $ref: "#/components/schemas/Timestamp"
+        internalProperties:
+          $ref: "#/components/schemas/InternalProperties"
 
     WagerCreateCardRequest:
       type: object
@@ -2310,7 +2398,8 @@ components:
           $ref: "#/components/schemas/UUID"
         seriesName:
           type: string
-
+        status:
+          $ref: "#/components/schemas/EventStatus"
         name:
           type: string
         description:

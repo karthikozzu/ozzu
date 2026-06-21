@@ -16,4 +16,18 @@ public interface UserTokenBalanceRepository extends JpaRepository<UserTokenBalan
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select b from UserTokenBalanceEntity b where b.userId = :userId")
     Optional<UserTokenBalanceEntity> findForUpdate(@Param("userId") UUID userId);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+
+    @Query("""
+
+        select b
+
+        from UserTokenBalanceEntity b
+
+        where b.userId = :userId
+
+    """)
+
+    Optional<UserTokenBalanceEntity> lockByUserId(@Param("userId") UUID userId);
 }

@@ -22,4 +22,11 @@ public interface TokenLedgerRepository extends JpaRepository<TokenLedgerEntity, 
 
   @Query("select coalesce(sum(t.amount), 0) from TokenLedgerEntity t where t.user.id = :userId")
   long getBalance(@Param("userId") UUID userId);
+
+  boolean existsByUserIdAndTxnTypeAndIdempotencyKey(
+          UUID userId,
+          TokenTxnType txnType,
+          String idempotencyKey
+
+  );
 }

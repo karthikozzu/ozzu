@@ -11,7 +11,9 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
+import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.UuidGenerator;
+import org.hibernate.type.SqlTypes;
 
 import java.time.OffsetDateTime;
 import java.util.UUID;
@@ -53,7 +55,8 @@ public class WagerCardEntity {
     @Column(name = "status")
     private String status;
 
-    @Column(name = "internal_properties", columnDefinition = "jsonb")
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "internal_properties", nullable = false, columnDefinition = "jsonb")
     private String internalProperties = "{}";
 
     @Column(name = "created_at", nullable = false, updatable = false)
@@ -121,7 +124,9 @@ public class WagerCardEntity {
     }
 
     public void setInternalProperties(String internalProperties) {
-        this.internalProperties = internalProperties;
+        this.internalProperties = internalProperties == null || internalProperties.isBlank()
+                ? "{}"
+                : internalProperties;
     }
 
     public OffsetDateTime getCreatedAt() {

@@ -14,6 +14,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 public interface EventRepository extends JpaRepository<EventEntity, UUID>, JpaSpecificationExecutor<EventEntity> {
+
   List<EventEntity> findByDomain_Id(UUID domainId);
   List<EventEntity> findByDomain_IdAndStatus(UUID domainId, EventStatus status);
 

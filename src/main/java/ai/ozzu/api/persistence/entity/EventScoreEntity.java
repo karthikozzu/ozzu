@@ -11,30 +11,84 @@ import java.util.UUID;
 
 @Entity
 @Table(
-        name="event_scores",
-        indexes=@Index(name="ix_event_scores_event_time", columnList="event_id,created_at")
+        name = "event_scores",
+        indexes = {
+                @Index(name = "ix_event_scores_event_time", columnList = "event_id, created_at")
+        }
 )
 public class EventScoreEntity {
 
-    @Id @Column(columnDefinition = "uuid", updatable = false, nullable = false)
+    @Id
     @UuidGenerator
+    @Column(columnDefinition = "uuid", updatable = false, nullable = false)
     private UUID id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name="event_id", nullable=false)
+    @JoinColumn(name = "event_id", nullable = false)
     private EventEntity event;
 
-    @Column(name="schema_uri")
+    @Column(name = "schema_uri")
     private String schemaUri;
 
     @JdbcTypeCode(SqlTypes.JSON)
-    @Column(name="score_json", nullable=false, columnDefinition="jsonb")
-    private Map<String, Object> scoreJson;
+    @Column(name = "score_json", nullable = false, columnDefinition = "jsonb")
+    private Map<String, Object> scoreJson = Map.of();
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name="created_by_user_id")
+    @JoinColumn(name = "created_by_user_id")
     private UserEntity createdByUser;
 
-    @Column(name="created_at", nullable=false, updatable=false)
-    private OffsetDateTime createdAt = OffsetDateTime.now();
+    @Column(name = "created_at", nullable = false, updatable = false)
+    private OffsetDateTime createdAt;
+
+    @PrePersist
+    public void prePersist() {
+        if (createdAt == null) {
+            createdAt = OffsetDateTime.now();
+        }
+
+        if (scoreJson == null) {
+            scoreJson = Map.of();
+        }
+    }
+
+    public UUID getId() {
+        return id;
+    }
+
+    public EventEntity getEvent() {
+        return event;
+    }
+
+    public void setEvent(EventEntity event) {
+        this.event = event;
+    }
+
+    public String getSchemaUri() {
+        return schemaUri;
+    }
+
+    public void setSchemaUri(String schemaUri) {
+        this.schemaUri = schemaUri;
+    }
+
+    public Map<String, Object> getScoreJson() {
+        return scoreJson;
+    }
+
+    public void setScoreJson(Map<String, Object> scoreJson) {
+        this.scoreJson = scoreJson == null ? Map.of() : scoreJson;
+    }
+
+    public UserEntity getCreatedByUser() {
+        return createdByUser;
+    }
+
+    public void setCreatedByUser(UserEntity createdByUser) {
+        this.createdByUser = createdByUser;
+    }
+
+    public OffsetDateTime getCreatedAt() {
+        return createdAt;
+    }
 }

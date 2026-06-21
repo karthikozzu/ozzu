@@ -118,4 +118,16 @@ AND w.eventId IN :eventIds
     List<WagerEntity> findByUserIdAndEventIdIn(@Param("userId")UUID userId, @Param("eventIds")List<UUID> eventIds);
 
     Optional<WagerEntity> findByEventIdAndId(UUID eventId, UUID id);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+        select w
+        from WagerEntity w
+        where w.eventId = :eventId
+          and w.status = :status
+    """)
+    List<WagerEntity> lockByEventIdAndStatus(
+            @Param("eventId") UUID eventId,
+            @Param("status") WagerStatus status
+    );
 }

@@ -5,7 +5,12 @@ import ai.ozzu.api.generated.api.EventsApi;
 import ai.ozzu.api.generated.model.Event;
 import ai.ozzu.api.generated.model.EventListResponse;
 import ai.ozzu.api.generated.model.EventPageResponse;
+import ai.ozzu.api.generated.model.EventStatusUpdateRequest;
+import ai.ozzu.api.generated.model.EventStatusUpdateResponse;
+import ai.ozzu.api.persistence.entity.EventEntity;
+import ai.ozzu.api.persistence.enums.EventStatus;
 import ai.ozzu.api.persistence.models.EventCreateRequest;
+import ai.ozzu.api.service.EventStatusService;
 import ai.ozzu.api.service.EventsService;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -13,6 +18,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.context.request.NativeWebRequest;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
@@ -26,9 +33,12 @@ public class EventsController implements EventsApi {
     private final EventsService eventsService;
     private final ObjectMapper objectMapper;
 
-    public EventsController(EventsService eventsService, ObjectMapper objectMapper) {
+    private final EventStatusService eventStatusService;
+
+    public EventsController(EventsService eventsService, ObjectMapper objectMapper, EventStatusService eventStatusService) {
         this.eventsService = eventsService;
         this.objectMapper = objectMapper;
+        this.eventStatusService = eventStatusService;
     }
 
     @Override
@@ -82,5 +92,28 @@ public class EventsController implements EventsApi {
             String cursor
     ) {
         return ResponseEntity.ok(eventsService.listEvents(domainId, seriesId, teamId, fromDate, toDate, status, limit, cursor));
+    }
+
+    private UUID currentUserId() {
+        Authentication authentication = SecurityContextHolder
+                .getContext()
+                .getAuthentication();
+        if (authentication == null || !authentication.isAuthenticated()) {
+            throw new BadRequestException("Unauthorized");
+        }
+        Object principal = authentication.getPrincipal();
+        if (principal == null) {
+            throw new BadRequestException("Unauthorized");
+        }
+        return UUID.fromString(principal.toString());
+    }
+
+    @Override
+    public ResponseEntity<EventStatusUpdateResponse> ozzuDomainsDomainIdEventsEventIdStatusPatch(UUID domainId,
+                                                                                                 UUID eventId,
+                                                                                                 EventStatusUpdateRequest eventStatusUpdateRequest) {
+        return ResponseEntity.ok(eventStatusService.changeEventStatus(domainId, eventId,
+                EventStatus.valueOf(eventStatusUpdateRequest.getStatus().name()),
+                currentUserId()));
     }
 }
