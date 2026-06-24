@@ -1468,3 +1468,27 @@ DO $$
                     FOREIGN KEY (concept_term_id) REFERENCES concept_terms(id) ON DELETE RESTRICT;
         END IF;
     END$$;
+
+ALTER TABLE wager_card_bindings
+    ADD COLUMN IF NOT EXISTS binding_value_id uuid;
+
+ALTER TABLE wager_card_bindings
+    ADD COLUMN IF NOT EXISTS value text;
+
+DO $$
+    BEGIN
+        IF NOT EXISTS (
+            SELECT 1
+            FROM pg_constraint
+            WHERE conname = 'fk_wcb_binding_value'
+        ) THEN
+            ALTER TABLE wager_card_bindings
+                ADD CONSTRAINT fk_wcb_binding_value
+                    FOREIGN KEY (binding_value_id)
+                        REFERENCES concept_terms(id)
+                        ON DELETE SET NULL;
+        END IF;
+    END$$;
+
+CREATE INDEX IF NOT EXISTS ix_wcb_binding_value
+    ON wager_card_bindings(binding_value_id);

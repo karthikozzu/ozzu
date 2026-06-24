@@ -794,6 +794,23 @@ paths:
               schema:
                 $ref: "#/components/schemas/Lounge"
 
+  /ozzu/domains/{domainId}/lounges/{loungeId}:
+    get:
+      tags: [ Lounges ]
+      summary: Get lounge (e.g., Nike, Adidas, Ozzu)
+      description: >
+        Get an Lounge
+      parameters:
+        - $ref: "#/components/parameters/DomainId"
+        - $ref: "#/components/parameters/LoungeId"
+      responses:
+        "200":
+          description: Lounge Response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Lounge"
+
   /ozzu/domains/{domainId}/lounges/actions/getMyLounges:
     get:
       tags: [Lounges]
@@ -811,6 +828,21 @@ paths:
                   $ref: "#/components/schemas/Lounge"
 
   /ozzu/domains/{domainId}/events/{eventId}/eventLounges:
+    get:
+      tags: [ EventLounges ]
+      summary: Get event lounges (lounge hosting an event)
+      parameters:
+        - $ref: "#/components/parameters/DomainId"
+        - $ref: "#/components/parameters/EventId"
+      responses:
+        "200":
+          description: Event lounges List
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/EventLounge"
     post:
       tags: [EventLounges]
       summary: Create event lounge (lounge hosting an event)
@@ -1819,6 +1851,8 @@ components:
           $ref: "#/components/schemas/UUID"
         scopedReferentId:
           $ref: "#/components/schemas/UUID"
+        bindingValueId:
+          $ref: "#/components/schemas/UUID"
         value:
           type: string
         pickPayload:
@@ -2110,6 +2144,8 @@ components:
         playerId:
           $ref: "#/components/schemas/UUID"
         teamId:
+          $ref: "#/components/schemas/UUID"
+        bindingValueId:
           $ref: "#/components/schemas/UUID"
         value:
           type: string

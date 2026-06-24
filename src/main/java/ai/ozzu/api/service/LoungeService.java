@@ -3,6 +3,7 @@ package ai.ozzu.api.service;
 import ai.ozzu.api.exceptions.EntityAlreadyExistsException;
 import ai.ozzu.api.exceptions.EntityNotFoundException;
 import ai.ozzu.api.exceptions.MissingFieldException;
+import ai.ozzu.api.generated.model.Domain;
 import ai.ozzu.api.generated.model.Lounge;
 import ai.ozzu.api.generated.model.LoungeCreateRequest;
 import ai.ozzu.api.persistence.entity.DomainEntity;
@@ -20,9 +21,11 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import javax.swing.text.html.Option;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 
 @Service
@@ -45,6 +48,17 @@ public class LoungeService {
         this.userRepository = userRepository;
         this.loungeRepository = loungeRepository;
         this.loungeMembershipRepository = loungeMembershipRepository;
+    }
+
+    public Lounge getLounge(UUID domainId, UUID loungeId) {
+        Optional<LoungeEntity> loungeEntityOptional = loungeRepository.findById(loungeId);
+        if(loungeEntityOptional.isEmpty()) {
+            throw new EntityNotFoundException("Lounge not found:"+loungeId);
+        }
+        if(! loungeEntityOptional.get().getDomain().getId().equals(domainId)) {
+            throw new EntityNotFoundException("Domain ID not matching with Lounge");
+        }
+        return toApi(loungeEntityOptional.get());
     }
 
     @Transactional(readOnly = true)

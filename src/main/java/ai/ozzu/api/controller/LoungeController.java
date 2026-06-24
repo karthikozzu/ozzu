@@ -42,4 +42,9 @@ public class LoungeController implements LoungesApi {
         Lounge created = loungeService.createLounge(domainId, userId, loungeCreateRequest);
         return ResponseEntity.ok(created);
     }
+
+    @Override
+    public ResponseEntity<Lounge> ozzuDomainsDomainIdLoungesLoungeIdGet(UUID domainId, UUID loungeId) {
+        return ResponseEntity.ok(loungeService.getLounge(domainId, loungeId));
+    }
 }

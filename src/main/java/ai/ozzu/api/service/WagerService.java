@@ -8,6 +8,7 @@ import ai.ozzu.api.generated.model.WagerCardBinding;
 import ai.ozzu.api.generated.model.WagerCreateCardBindingRequest;
 import ai.ozzu.api.generated.model.WagerCreateCardRequest;
 import ai.ozzu.api.generated.model.WagerCreateRequest;
+import ai.ozzu.api.persistence.entity.ConceptTermEntity;
 import ai.ozzu.api.persistence.entity.DomainEntity;
 import ai.ozzu.api.persistence.entity.EventEntity;
 import ai.ozzu.api.persistence.entity.PlayerEntity;
@@ -21,6 +22,7 @@ import ai.ozzu.api.persistence.entity.WagerCardTypeEntity;
 import ai.ozzu.api.persistence.entity.WagerEntity;
 import ai.ozzu.api.persistence.enums.EventStatus;
 import ai.ozzu.api.persistence.enums.WagerStatus;
+import ai.ozzu.api.persistence.repo.ConceptTermRepository;
 import ai.ozzu.api.persistence.repo.DomainRepository;
 import ai.ozzu.api.persistence.repo.EventRepository;
 import ai.ozzu.api.persistence.repo.PlayerRepository;
@@ -46,6 +48,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -66,12 +69,12 @@ public class WagerService {
     private final ScopedReferentRepository scopedReferentRepo;
     private final PlayerRepository playerRepo;
     private final TeamRepository teamRepo;
+    private final ConceptTermRepository conceptTermRepo;
 
     private final UserRepository userRepo;
     private final DomainRepository domainRepo;
 
     private final TokenLedgerService tokenLedgerService;
-    private final WagerStatusService wagerStatusService;
     private final ObjectMapper objectMapper;
 
     public WagerService(
@@ -84,10 +87,10 @@ public class WagerService {
             ScopedReferentRepository scopedReferentRepo,
             PlayerRepository playerRepo,
             TeamRepository teamRepo,
+            ConceptTermRepository conceptTermRepo,
             UserRepository userRepo,
             DomainRepository domainRepo,
             TokenLedgerService tokenLedgerService,
-            WagerStatusService wagerStatusService,
             ObjectMapper objectMapper
     ) {
         this.eventRepo = eventRepo;
@@ -99,10 +102,10 @@ public class WagerService {
         this.scopedReferentRepo = scopedReferentRepo;
         this.playerRepo = playerRepo;
         this.teamRepo = teamRepo;
+        this.conceptTermRepo = conceptTermRepo;
         this.userRepo = userRepo;
         this.domainRepo = domainRepo;
         this.tokenLedgerService = tokenLedgerService;
-        this.wagerStatusService = wagerStatusService;
         this.objectMapper = objectMapper;
     }
 
@@ -119,7 +122,13 @@ public class WagerService {
     }
 
     @Transactional
-    public Wager create(UUID domainId, UUID eventId, UUID userId, String idemKey, WagerCreateRequest req) {
+    public Wager create(
+            UUID domainId,
+            UUID eventId,
+            UUID userId,
+            String idemKey,
+            WagerCreateRequest req
+    ) {
         validateCreateRequest(req);
 
         log.info(
@@ -136,7 +145,8 @@ public class WagerService {
 
         if (event.getStatus() != EventStatus.SCHEDULED) {
             throw new IllegalStateException(
-                    "Wagers can be created only before event starts. Current event status: " + event.getStatus()
+                    "Wagers can be created only before event starts. Current event status: "
+                            + event.getStatus()
             );
         }
 
@@ -154,34 +164,17 @@ public class WagerService {
         wager.setUserId(userId);
         wager.setName(req.getName());
         wager.setStakeTokens(stake);
-
-        // Initial state
         wager.setStatus(WagerStatus.CREATED);
-
         wager.setInternalProperties(mapToJsonString(req.getInternalProperties()));
         wager.setUpdatedAt(OffsetDateTime.now());
 
-        /*
-         * IMPORTANT:
-         * Use saveAndFlush so the wager row exists before inserting cards/bindings/ledger.
-         * Do NOT call wagerStatusService.changeWagerStatus(... CREATED ...).
-         */
         wager = wagerRepo.saveAndFlush(wager);
 
         createCardsAndBindings(domainId, eventId, wager, req);
 
         try {
-            /*
-             * Debit tokens once.
-             * If stake is 0, your TokenLedgerService should ideally no-op safely.
-             */
             tokenLedgerService.debitStakeOnce(user, domain, event, wager, stake, idemKey);
 
-            /*
-             * Since this wager was created in this same transaction,
-             * do NOT re-lock it using wagerStatusService.
-             * Just update the managed entity directly.
-             */
             WagerStatus oldStatus = wager.getStatus();
 
             if (!WagerStatus.canTransition(oldStatus, WagerStatus.PLACED)) {
@@ -205,39 +198,15 @@ public class WagerService {
             );
 
         } catch (RuntimeException ex) {
-            try {
-                /*
-                 * Same here: do not call changeWagerStatus() during create.
-                 * Directly mark the newly-created wager as CANCELED.
-                 */
-                WagerStatus oldStatus = wager.getStatus();
-
-                if (oldStatus != WagerStatus.CANCELED
-                        && WagerStatus.canTransition(oldStatus, WagerStatus.CANCELED)) {
-                    wager.setStatus(WagerStatus.CANCELED);
-                    wager.setUpdatedAt(OffsetDateTime.now());
-                    wagerRepo.saveAndFlush(wager);
-                }
-
-            } catch (RuntimeException statusEx) {
-                log.error(
-                        "wager.create.debitFailed.statusCancelFailed eventId={} wagerId={} userId={} error={}",
-                        eventId,
-                        wager.getId(),
-                        userId,
-                        statusEx.toString(),
-                        statusEx
-                );
-            }
-
             log.warn(
-                    "wager.create.debitFailed domainId={} eventId={} wagerId={} userId={} stakeTokens={} error={}",
+                    "wager.create.failed domainId={} eventId={} wagerId={} userId={} stakeTokens={} error={}",
                     domainId,
                     eventId,
                     wager.getId(),
                     userId,
                     stake,
-                    ex.toString()
+                    ex.toString(),
+                    ex
             );
 
             throw ex;
@@ -290,11 +259,12 @@ public class WagerService {
                         binding.getScopedReferentId() != null
                                 || binding.getPlayerId() != null
                                 || binding.getTeamId() != null
+                                || binding.getBindingValueId() != null
                                 || (binding.getValue() != null && !binding.getValue().isBlank());
 
                 if (!hasPick) {
                     throw new BadRequestException(
-                            "each binding must include scopedReferentId, playerId, teamId, or value"
+                            "each binding must include scopedReferentId, playerId, teamId, bindingValueId, or value"
                     );
                 }
             }
@@ -315,7 +285,6 @@ public class WagerService {
 
             WagerCardEntity wagerCard = new WagerCardEntity();
             wagerCard.setWager(wager);
-
             wagerCard.setWagerCardType(cardType);
             wagerCard.setStatus(WagerStatus.CREATED.name());
             wagerCard.setInternalProperties("{}");
@@ -375,32 +344,49 @@ public class WagerService {
             binding.setTeam(team);
         }
 
-        binding.setEntityLabel(bindingReq.getValue());
+        Map<String, Object> payload = new HashMap<>(toMap(bindingReq.getPickPayload()));
 
-        if (binding.getScopedReferent() == null && binding.getEntityType() == null) {
-            if (binding.getTeam() != null) {
-                binding.setEntityType("TEAM");
-            } else if (binding.getPlayer() != null) {
-                binding.setEntityType("PLAYER");
-            } else if (binding.getEntityLabel() != null && !binding.getEntityLabel().isBlank()) {
-                binding.setEntityType("LABEL");
-            } else {
-                throw new IllegalArgumentException(
-                        "Invalid binding: must provide scopedReferentId OR team/player/value"
-                );
-            }
+        UUID bindingValueId = resolveBindingValueId(bindingReq, payload);
+
+        if (bindingValueId != null) {
+            ConceptTermEntity bindingValue = conceptTermRepo
+                    .findByIdAndDomain_Id(bindingValueId, domainId)
+                    .orElseThrow(() -> new IllegalArgumentException(
+                            "Invalid bindingValueId: " + bindingValueId
+                    ));
+
+            binding.setBindingValue(bindingValue);
+
+            payload.putIfAbsent("selectedConceptTermId", bindingValue.getId().toString());
+            payload.putIfAbsent("selectedValue", bindingValue.getName());
         }
 
-        Map<String, Object> payload = toMap(bindingReq.getPickPayload());
+        String value = resolveRequestValue(bindingReq, payload, binding);
 
-        if (bindingReq.getValue() != null && !bindingReq.getValue().isBlank()) {
-            payload = new java.util.HashMap<>(payload);
-            payload.putIfAbsent("value", bindingReq.getValue());
+        if (value != null && !value.isBlank()) {
+            binding.setValue(value);
+            binding.setEntityLabel(value);
+
+            payload.putIfAbsent("value", value);
+            payload.putIfAbsent("selectedValue", value);
         }
 
         if (bindingReq.getConceptId() != null) {
-            payload = new java.util.HashMap<>(payload);
             payload.putIfAbsent("conceptId", bindingReq.getConceptId().toString());
+        }
+
+        if (binding.getTeam() != null) {
+            binding.setEntityType("TEAM");
+        } else if (binding.getPlayer() != null) {
+            binding.setEntityType("PLAYER");
+        } else if (binding.getScopedReferent() != null) {
+            binding.setEntityType("SCOPED_REFERENT");
+        } else if (binding.getValue() != null && !binding.getValue().isBlank()) {
+            binding.setEntityType("VALUE");
+        } else {
+            throw new IllegalArgumentException(
+                    "Invalid binding: must provide scopedReferentId, teamId, playerId, bindingValueId, or value"
+            );
         }
 
         binding.setPickPayload(payload);
@@ -410,26 +396,78 @@ public class WagerService {
         binding = wagerCardBindingRepo.save(binding);
 
         log.info(
-                "wager.binding.saved domainId={} eventId={} wagerId={} cardId={} bindingId={}",
+                "wager.binding.saved domainId={} eventId={} wagerId={} cardId={} bindingId={} value={} bindingValueId={}",
                 domainId,
                 eventId,
                 wager.getId(),
                 wagerCard.getId(),
-                binding.getId()
+                binding.getId(),
+                binding.getValue(),
+                binding.getBindingValue() != null ? binding.getBindingValue().getId() : null
         );
     }
 
-    @Transactional(readOnly = true)
-    public PageResult<Wager> getWagersPaginated(UUID domainId, Integer limit, String cursor, UUID userId) {
-        int effectiveLimit = limit == null || limit <= 0 ? 20 : Math.min(limit, 100);
+    private UUID resolveBindingValueId(
+            WagerCreateCardBindingRequest bindingReq,
+            Map<String, Object> payload
+    ) {
+        if (bindingReq.getBindingValueId() != null) {
+            return bindingReq.getBindingValueId();
+        }
 
-        log.info(
-                "wager.listPaginated domainId={} userId={} limit={} cursorPresent={}",
-                domainId,
-                userId,
-                effectiveLimit,
-                cursor != null && !cursor.isBlank()
-        );
+        Object selectedConceptTermId = payload.get("selectedConceptTermId");
+
+        if (selectedConceptTermId == null) {
+            selectedConceptTermId = payload.get("bindingValueId");
+        }
+
+        if (selectedConceptTermId == null) {
+            return null;
+        }
+
+        try {
+            return UUID.fromString(selectedConceptTermId.toString());
+        } catch (Exception ex) {
+            throw new BadRequestException("Invalid selectedConceptTermId/bindingValueId in pickPayload");
+        }
+    }
+
+    private String resolveRequestValue(
+            WagerCreateCardBindingRequest bindingReq,
+            Map<String, Object> payload,
+            WagerCardBindingEntity binding
+    ) {
+        if (bindingReq.getValue() != null && !bindingReq.getValue().isBlank()) {
+            return bindingReq.getValue();
+        }
+
+        Object selectedValue = payload.get("selectedValue");
+
+        if (selectedValue != null && !selectedValue.toString().isBlank()) {
+            return selectedValue.toString();
+        }
+
+        Object value = payload.get("value");
+
+        if (value != null && !value.toString().isBlank()) {
+            return value.toString();
+        }
+
+        if (binding.getBindingValue() != null) {
+            return binding.getBindingValue().getName();
+        }
+
+        return null;
+    }
+
+    @Transactional(readOnly = true)
+    public PageResult<Wager> getWagersPaginated(
+            UUID domainId,
+            Integer limit,
+            String cursor,
+            UUID userId
+    ) {
+        int effectiveLimit = limit == null || limit <= 0 ? 20 : Math.min(limit, 100);
 
         Pageable pageable = PageRequest.of(0, effectiveLimit + 1);
         List<WagerEntity> entityPage;
@@ -457,7 +495,11 @@ public class WagerService {
             if (userId == null) {
                 entityPage = wagerRepo.findByDomainIdOrderByCreatedAtDesc(domainId, pageable);
             } else {
-                entityPage = wagerRepo.findByDomainIdAndUserIdOrderByCreatedAtDesc(domainId, userId, pageable);
+                entityPage = wagerRepo.findByDomainIdAndUserIdOrderByCreatedAtDesc(
+                        domainId,
+                        userId,
+                        pageable
+                );
             }
         }
 
@@ -594,6 +636,15 @@ public class WagerService {
                         : null
         );
 
+        /*
+         * Requires OpenAPI regen with bindingValueId in WagerCardBinding.
+         */
+        api.setBindingValueId(
+                bindingEntity.getBindingValue() != null
+                        ? bindingEntity.getBindingValue().getId()
+                        : null
+        );
+
         api.setValue(resolveBindingValue(bindingEntity));
         api.setEntityType(bindingEntity.getEntityType());
         api.setEntityLabel(bindingEntity.getEntityLabel());
@@ -650,39 +701,40 @@ public class WagerService {
             return null;
         }
 
+        if (bindingEntity.getValue() != null && !bindingEntity.getValue().isBlank()) {
+            return bindingEntity.getValue();
+        }
+
+        if (bindingEntity.getBindingValue() != null
+                && bindingEntity.getBindingValue().getName() != null) {
+            return bindingEntity.getBindingValue().getName();
+        }
+
         if (bindingEntity.getEntityLabel() != null && !bindingEntity.getEntityLabel().isBlank()) {
             return bindingEntity.getEntityLabel();
         }
 
-        if (bindingEntity.getPlayer() != null && bindingEntity.getPlayer().getName() != null) {
-            return bindingEntity.getPlayer().getName();
-        }
-
-        if (bindingEntity.getTeam() != null && bindingEntity.getTeam().getName() != null) {
-            return bindingEntity.getTeam().getName();
-        }
-
-        if (bindingEntity.getScopedReferent() != null
-                && bindingEntity.getScopedReferent().getName() != null) {
-            return bindingEntity.getScopedReferent().getName();
-        }
-
         if (bindingEntity.getPickPayload() != null) {
-            Object value = bindingEntity.getPickPayload().get("value");
-            if (value != null) {
-                return String.valueOf(value);
+            Object selectedValue = bindingEntity.getPickPayload().get("selectedValue");
+
+            if (selectedValue != null) {
+                return String.valueOf(selectedValue);
             }
 
-            Object label = bindingEntity.getPickPayload().get("label");
-            if (label != null) {
-                return String.valueOf(label);
+            Object value = bindingEntity.getPickPayload().get("value");
+
+            if (value != null) {
+                return String.valueOf(value);
             }
         }
 
         return null;
     }
 
-    private void lockOddsFromPayload(WagerCardBindingEntity binding, Map<String, Object> payload) {
+    private void lockOddsFromPayload(
+            WagerCardBindingEntity binding,
+            Map<String, Object> payload
+    ) {
         BigDecimal decimalOdds = extractDecimal(
                 payload,
                 "lockedDecimalOdds",

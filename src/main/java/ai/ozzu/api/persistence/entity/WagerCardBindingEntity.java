@@ -91,6 +91,13 @@ public class WagerCardBindingEntity {
     @Column(name = "updated_at", nullable = false)
     private OffsetDateTime updatedAt;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "binding_value_id")
+    private ConceptTermEntity bindingValue;
+
+    @Column(name = "value")
+    private String value;
+
     @PrePersist
     public void prePersist() {
         OffsetDateTime now = OffsetDateTime.now();
@@ -247,5 +254,21 @@ public class WagerCardBindingEntity {
 
     public void setUpdatedAt(OffsetDateTime updatedAt) {
         this.updatedAt = updatedAt;
+    }
+
+    public ConceptTermEntity getBindingValue() {
+        return bindingValue;
+    }
+
+    public void setBindingValue(ConceptTermEntity bindingValue) {
+        this.bindingValue = bindingValue;
+    }
+
+    public String getValue() {
+        return value;
+    }
+
+    public void setValue(String value) {
+        this.value = value;
     }
 }

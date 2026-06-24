@@ -49,6 +49,11 @@ public class WagerSettlementService {
         this.tokenLedgerService = tokenLedgerService;
     }
 
+    /**
+     * This is the main settlement method.
+     *
+     * Called from EventStatusService when event status becomes COMPLETED.
+     */
     @Transactional
     public int settleEvent(UUID eventId, UUID actorUserId) {
         EventScoreEntity finalScore = eventScoreRepo
@@ -67,9 +72,11 @@ public class WagerSettlementService {
         for (WagerEntity wager : lockedWagers) {
             SettlementDecision decision = evaluateWager(wager, scoreJson);
 
-            settleSingleWager(wager, decision, actorUserId);
+            boolean settled = settleSingleWager(wager, decision, actorUserId);
 
-            settledCount++;
+            if (settled) {
+                settledCount++;
+            }
         }
 
         return settledCount;
@@ -108,34 +115,27 @@ public class WagerSettlementService {
             WagerCardBindingEntity binding,
             JsonNode scoreJson
     ) {
-        String rootConceptName = rootConceptName(binding);
+        String conceptName = conceptName(binding);
 
-        if (rootConceptName == null || rootConceptName.isBlank()) {
+        if (conceptName == null || conceptName.isBlank()) {
             return BindingDecision.VOID;
         }
 
-        return switch (rootConceptName.toLowerCase()) {
+        return switch (normalize(conceptName)) {
             case "runs" -> evaluatePlayerRunsRange(binding, scoreJson);
             case "wickets" -> evaluatePlayerWicketsRange(binding, scoreJson);
             case "typeofdismissal" -> evaluatePlayerDismissalType(binding, scoreJson);
             case "team" -> evaluateTeamResult(binding, scoreJson);
-            case "batsmen", "bowler", "allrounder" -> evaluatePlayerRole(binding, scoreJson);
+            case "batsmen", "batsman", "bowler", "allrounder" -> evaluatePlayerRole(binding, scoreJson);
             default -> BindingDecision.VOID;
         };
     }
 
-    /**
-     * Gets the actual concept name from the wager card type binding's concept term.
-     *
-     * In your data:
-     * - runs
-     * - wickets
-     * - typeOfDismissal
-     * - team
-     * - batsmen
-     * - bowler
-     */
-    private String rootConceptName(WagerCardBindingEntity binding) {
+    private String conceptName(WagerCardBindingEntity binding) {
+        if (binding == null) {
+            return null;
+        }
+
         if (binding.getWagerCardTypeBinding() == null) {
             return null;
         }
@@ -165,7 +165,7 @@ public class WagerSettlementService {
 
         String selectedValue = selectedValue(binding);
 
-        if (selectedValue == null) {
+        if (selectedValue == null || selectedValue.isBlank()) {
             return BindingDecision.VOID;
         }
 
@@ -192,7 +192,7 @@ public class WagerSettlementService {
 
         String selectedValue = selectedValue(binding);
 
-        if (selectedValue == null) {
+        if (selectedValue == null || selectedValue.isBlank()) {
             return BindingDecision.VOID;
         }
 
@@ -220,7 +220,7 @@ public class WagerSettlementService {
             return BindingDecision.VOID;
         }
 
-        return actualDismissalType.equalsIgnoreCase(selectedValue)
+        return normalize(actualDismissalType).equals(normalize(selectedValue))
                 ? BindingDecision.WIN
                 : BindingDecision.LOSE;
     }
@@ -236,14 +236,13 @@ public class WagerSettlementService {
         String playerId = binding.getPlayer().getId().toString();
 
         String actualRole = textAt(scoreJson, "/players/" + playerId + "/role");
-
-        String expectedRole = rootConceptName(binding);
+        String expectedRole = conceptName(binding);
 
         if (actualRole == null || expectedRole == null) {
             return BindingDecision.VOID;
         }
 
-        return actualRole.equalsIgnoreCase(expectedRole)
+        return normalize(actualRole).equals(normalize(expectedRole))
                 ? BindingDecision.WIN
                 : BindingDecision.LOSE;
     }
@@ -254,24 +253,20 @@ public class WagerSettlementService {
     ) {
         String winningTeamId = textAt(scoreJson, "/result/winningTeamId");
 
-        if (winningTeamId == null) {
+        if (winningTeamId == null || winningTeamId.isBlank()) {
             return BindingDecision.VOID;
         }
 
-        if (binding.getTeam() != null) {
-            return binding.getTeam().getId().toString().equals(winningTeamId)
-                    ? BindingDecision.WIN
-                    : BindingDecision.LOSE;
+        if (binding.getTeam() == null) {
+            return BindingDecision.VOID;
         }
 
-        /*
-         * If frontend sent playerId for a team concept, we cannot safely decide.
-         * Better return VOID than wrong settlement.
-         */
-        return BindingDecision.VOID;
+        return binding.getTeam().getId().toString().equals(winningTeamId)
+                ? BindingDecision.WIN
+                : BindingDecision.LOSE;
     }
 
-    private void settleSingleWager(
+    private boolean settleSingleWager(
             WagerEntity wager,
             SettlementDecision decision,
             UUID actorUserId
@@ -279,7 +274,7 @@ public class WagerSettlementService {
         WagerStatus oldStatus = wager.getStatus();
 
         if (!WagerStatus.canTransition(oldStatus, WagerStatus.SETTLED)) {
-            return;
+            return false;
         }
 
         int payoutTokens = calculatePayoutTokens(wager, decision);
@@ -327,6 +322,8 @@ public class WagerSettlementService {
                     "wager_refund_" + wager.getEventId() + "_" + wager.getId()
             );
         }
+
+        return true;
     }
 
     private int calculatePayoutTokens(
@@ -358,14 +355,52 @@ public class WagerSettlementService {
     }
 
     private BigDecimal resolveBestLockedOdds(WagerEntity wager) {
+        List<WagerCardBindingEntity> bindings =
+                wagerCardBindingRepo.findByWagerEventIdAndWagerId(
+                        wager.getEventId(),
+                        wager.getId()
+                );
+
+        BigDecimal bestOdds = null;
+
+        for (WagerCardBindingEntity binding : bindings) {
+            if (binding.getLockedDecimalOdds() == null) {
+                continue;
+            }
+
+            if (bestOdds == null || binding.getLockedDecimalOdds().compareTo(bestOdds) > 0) {
+                bestOdds = binding.getLockedDecimalOdds();
+            }
+        }
+
+        if (bestOdds != null && bestOdds.compareTo(BigDecimal.ZERO) > 0) {
+            return bestOdds;
+        }
+
         /*
-         * MVP production-safe default.
-         * Later: calculate from wager_card_bindings.locked_decimal_odds.
+         * Fallback until real odds are implemented.
          */
         return BigDecimal.valueOf(2.0);
     }
 
+    /**
+     * Priority:
+     * 1. value column
+     * 2. binding_value_id -> concept_terms.name
+     * 3. pickPayload.selectedValue
+     * 4. pickPayload.value
+     */
     private String selectedValue(WagerCardBindingEntity binding) {
+        if (binding.getValue() != null && !binding.getValue().isBlank()) {
+            return binding.getValue();
+        }
+
+        if (binding.getBindingValue() != null
+                && binding.getBindingValue().getName() != null
+                && !binding.getBindingValue().getName().isBlank()) {
+            return binding.getBindingValue().getName();
+        }
+
         Map<String, Object> payload = binding.getPickPayload();
 
         if (payload == null) {
@@ -374,7 +409,17 @@ public class WagerSettlementService {
 
         Object selectedValue = payload.get("selectedValue");
 
-        return selectedValue == null ? null : selectedValue.toString();
+        if (selectedValue != null && !selectedValue.toString().isBlank()) {
+            return selectedValue.toString();
+        }
+
+        Object value = payload.get("value");
+
+        if (value != null && !value.toString().isBlank()) {
+            return value.toString();
+        }
+
+        return null;
     }
 
     private boolean numberMatchesRange(int actual, String selectedValue) {
@@ -384,22 +429,26 @@ public class WagerSettlementService {
 
         String value = selectedValue.trim();
 
-        if (value.contains("-")) {
-            String[] parts = value.split("-");
+        try {
+            if (value.contains("-")) {
+                String[] parts = value.split("-");
 
-            if (parts.length != 2) {
-                return false;
+                if (parts.length != 2) {
+                    return false;
+                }
+
+                int min = Integer.parseInt(parts[0].trim());
+                int max = Integer.parseInt(parts[1].trim());
+
+                return actual >= min && actual <= max;
             }
 
-            int min = Integer.parseInt(parts[0].trim());
-            int max = Integer.parseInt(parts[1].trim());
+            int exact = Integer.parseInt(value);
 
-            return actual >= min && actual <= max;
+            return actual == exact;
+        } catch (Exception ex) {
+            return false;
         }
-
-        int exact = Integer.parseInt(value);
-
-        return actual == exact;
     }
 
     private String textAt(JsonNode node, String pointer) {
@@ -410,6 +459,19 @@ public class WagerSettlementService {
         }
 
         return value.asText();
+    }
+
+    private String normalize(String value) {
+        if (value == null) {
+            return "";
+        }
+
+        return value
+                .trim()
+                .toLowerCase()
+                .replace("_", "")
+                .replace("-", "")
+                .replace(" ", "");
     }
 
     private enum BindingDecision {
