@@ -12,12 +12,12 @@ import ai.ozzu.api.persistence.entity.TeamEntity;
 import ai.ozzu.api.persistence.entity.WagerEntity;
 import ai.ozzu.api.persistence.repo.EventRepository;
 import ai.ozzu.api.persistence.repo.WagerRepository;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -26,19 +26,26 @@ import java.util.stream.Collectors;
 @Service
 public class SpotlightService {
 
-    @Autowired
-    private EventRepository eventRepo;
+    private final EventRepository eventRepo;
+    private final WagerRepository wagerRepo;
+    private final TokenLedgerService tokenLedgerService;
 
-    @Autowired
-    private WagerRepository wagerRepo;
-
-    @Autowired
-    private TokenLedgerService tokenLedgerService;
+    public SpotlightService(
+            EventRepository eventRepo,
+            WagerRepository wagerRepo,
+            TokenLedgerService tokenLedgerService
+    ) {
+        this.eventRepo = eventRepo;
+        this.wagerRepo = wagerRepo;
+        this.tokenLedgerService = tokenLedgerService;
+    }
 
     public SpotlightResponse getSpotlight(UUID domainId, UUID userId, int limit, int page) {
+        int safeLimit = limit <= 0 ? 10 : Math.min(limit, 50);
+        int safePage = Math.max(page, 0);
 
-        Pageable spotlightPage = PageRequest.of(0, limit);
-        Pageable otherPage = PageRequest.of(page, limit);
+        Pageable spotlightPage = PageRequest.of(0, safeLimit);
+        Pageable otherPage = PageRequest.of(safePage, safeLimit);
 
         List<EventEntity> spotlightEvents =
                 eventRepo.findSpotlightEvents(domainId, spotlightPage);
@@ -54,11 +61,11 @@ public class SpotlightService {
                 .map(EventEntity::getId)
                 .toList();
 
-        Map<UUID, Long> userCounts = wagerRepo.countUsersBulk(eventIds);
-        Map<UUID, Integer> potMap = wagerRepo.sumPotBulk(eventIds);
+        Map<UUID, Long> userCounts = countUsersBulk(eventIds);
+        Map<UUID, Long> potMap = sumPotBulk(eventIds);
         Map<UUID, WagerEntity> userWagers = findUserWagersBulk(userId, eventIds);
 
-        long tokens = tokenLedgerService.balance(userId);
+        long tokens = userId != null ? tokenLedgerService.balance(userId) : 0L;
 
         List<SpotlightEvent> events = allEvents.stream()
                 .map(event -> mapEvent(event, userCounts, potMap, userWagers))
@@ -66,8 +73,8 @@ public class SpotlightService {
 
         Pagination pagination = new Pagination();
         pagination.setTotalItems(otherEvents.size());
-        pagination.setNextPage(otherEvents.size() == limit ? page + 1 : null);
-        pagination.setPrevPage(page > 0 ? page - 1 : null);
+        pagination.setNextPage(otherEvents.size() == safeLimit ? safePage + 1 : null);
+        pagination.setPrevPage(safePage > 0 ? safePage - 1 : null);
 
         SpotlightResponse response = new SpotlightResponse();
         response.setTokens(tokens);
@@ -77,10 +84,35 @@ public class SpotlightService {
         return response;
     }
 
-    public Map<UUID, WagerEntity> findUserWagersBulk(UUID userId, List<UUID> eventIds) {
-
+    private Map<UUID, Long> countUsersBulk(List<UUID> eventIds) {
         if (eventIds == null || eventIds.isEmpty()) {
-            return Map.of();
+            return Collections.emptyMap();
+        }
+
+        return wagerRepo.countUsersBulkRows(eventIds)
+                .stream()
+                .collect(Collectors.toMap(
+                        WagerRepository.EventUserCountRow::getEventId,
+                        row -> row.getUsersCount() != null ? row.getUsersCount() : 0L
+                ));
+    }
+
+    private Map<UUID, Long> sumPotBulk(List<UUID> eventIds) {
+        if (eventIds == null || eventIds.isEmpty()) {
+            return Collections.emptyMap();
+        }
+
+        return wagerRepo.sumPotBulkRows(eventIds)
+                .stream()
+                .collect(Collectors.toMap(
+                        WagerRepository.EventPotRow::getEventId,
+                        row -> row.getPotAmount() != null ? row.getPotAmount() : 0
+                ));
+    }
+
+    public Map<UUID, WagerEntity> findUserWagersBulk(UUID userId, List<UUID> eventIds) {
+        if (userId == null || eventIds == null || eventIds.isEmpty()) {
+            return Collections.emptyMap();
         }
 
         List<WagerEntity> wagers =
@@ -97,14 +129,16 @@ public class SpotlightService {
     private SpotlightEvent mapEvent(
             EventEntity event,
             Map<UUID, Long> userCounts,
-            Map<UUID, Integer> potMap,
+            Map<UUID, Long> potMap,
             Map<UUID, WagerEntity> userWagers
     ) {
-
         SpotlightEvent dto = new SpotlightEvent();
 
         dto.setId(event.getId());
-        dto.setDomainId(event.getDomain().getId());
+
+        if (event.getDomain() != null) {
+            dto.setDomainId(event.getDomain().getId());
+        }
 
         if (event.getSeries() != null) {
             dto.setSeriesId(event.getSeries().getId());
@@ -125,17 +159,21 @@ public class SpotlightService {
         dto.setIsSpotlight(event.isSpotlight());
         dto.setInternalProperties(event.getInternalProperties());
 
-        dto.setUsersCount(userCounts.getOrDefault(event.getId(), 0L));
-        dto.setPotAmount(potMap.getOrDefault(event.getId(), 0));
+        Long usersCount = userCounts != null ? userCounts.get(event.getId()) : null;
+        Long potAmount = potMap != null ? potMap.get(event.getId()) : null;
+
+        dto.setUsersCount(usersCount != null ? usersCount : 0L);
+        dto.setPotAmount(potAmount != null ? potAmount.intValue() : 0);
 
         dto.setTeams(mapTeams(event));
         dto.setScoreSummary(mapScoreSummary(event.getInternalProperties()));
 
-        WagerEntity wager = userWagers.get(event.getId());
+        WagerEntity wager = userWagers != null ? userWagers.get(event.getId()) : null;
+
         if (wager != null) {
             SpotlightUserWager userWager = new SpotlightUserWager();
             userWager.setAmount(wager.getStakeTokens());
-            userWager.setOutcome(String.valueOf(wager.getOutcome()));
+            userWager.setOutcome(wager.getOutcome() != null ? wager.getOutcome().name() : null);
             dto.setUserWager(userWager);
         }
 
@@ -146,7 +184,6 @@ public class SpotlightService {
     }
 
     private List<SpotlightTeam> mapTeams(EventEntity event) {
-
         List<SpotlightTeam> teams = new ArrayList<>();
 
         if (event.getTeamA() != null) {
@@ -161,11 +198,13 @@ public class SpotlightService {
     }
 
     private SpotlightTeam mapTeam(TeamEntity team, EventEntity event, String teamKey) {
-
         SpotlightTeam dto = new SpotlightTeam();
 
         dto.setId(team.getId());
-        dto.setDomainId(team.getDomain().getId());
+
+        if (team.getDomain() != null) {
+            dto.setDomainId(team.getDomain().getId());
+        }
 
         if (team.getSeries() != null) {
             dto.setSeriesId(team.getSeries().getId());
@@ -189,7 +228,6 @@ public class SpotlightService {
     }
 
     private ScoreSummary mapScoreSummary(Map<String, Object> props) {
-
         if (props == null) {
             return null;
         }
@@ -233,7 +271,6 @@ public class SpotlightService {
     }
 
     private String getScoreDisplay(Map<String, Object> props, String teamKey) {
-
         if (props == null) {
             return null;
         }
@@ -282,7 +319,11 @@ public class SpotlightService {
             return n.intValue();
         }
 
-        return Integer.valueOf(String.valueOf(value));
+        try {
+            return Integer.valueOf(String.valueOf(value));
+        } catch (Exception ex) {
+            return null;
+        }
     }
 
     private Double asDouble(Object value) {
@@ -298,7 +339,11 @@ public class SpotlightService {
             return n.doubleValue();
         }
 
-        return Double.valueOf(String.valueOf(value));
+        try {
+            return Double.valueOf(String.valueOf(value));
+        } catch (Exception ex) {
+            return null;
+        }
     }
 
     private Boolean asBoolean(Object value) {

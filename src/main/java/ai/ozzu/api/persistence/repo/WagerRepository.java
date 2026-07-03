@@ -17,6 +17,16 @@ import java.util.UUID;
 
 public interface WagerRepository extends JpaRepository<WagerEntity, UUID> {
 
+    interface EventUserCountRow {
+        UUID getEventId();
+        Long getUsersCount();
+    }
+
+    interface EventPotRow {
+        UUID getEventId();
+        Long getPotAmount();
+    }
+
     List<WagerEntity> findByUserIdOrderByCreatedAtDesc(UUID userId);
 
     List<WagerEntity> findByEventId(UUID eventId);
@@ -54,7 +64,7 @@ public interface WagerRepository extends JpaRepository<WagerEntity, UUID> {
     @Query("""
             select w from WagerEntity w
             where w.domainId = :domainId
-              and    w.userId = :userId
+              and w.userId = :userId
               and (w.createdAt < :cursorTime
                    or (w.createdAt = :cursorTime and w.id < :cursorId))
             order by w.createdAt desc, w.id desc
@@ -69,7 +79,11 @@ public interface WagerRepository extends JpaRepository<WagerEntity, UUID> {
 
     List<WagerEntity> findByDomainIdOrderByCreatedAtDesc(UUID domainId, Pageable pageable);
 
-    List<WagerEntity> findByDomainIdAndUserIdOrderByCreatedAtDesc(UUID domainId, UUID userId, Pageable pageable);
+    List<WagerEntity> findByDomainIdAndUserIdOrderByCreatedAtDesc(
+            UUID domainId,
+            UUID userId,
+            Pageable pageable
+    );
 
     @Query("""
             select w
@@ -81,51 +95,61 @@ public interface WagerRepository extends JpaRepository<WagerEntity, UUID> {
     List<WagerEntity> findCelebrityWagersByEventId(@Param("eventId") UUID eventId);
 
     @Query("""
-    select new map(
-        sum(case when w.status = :placed then 1 else 0 end) as totalPlaced,
-        coalesce(sum(w.stakeTokens), 0) as totalStake
-    )
-    from WagerEntity w
-    where w.eventId = :eventId
-    """)
+            select new map(
+                sum(case when w.status = :placed then 1 else 0 end) as totalPlaced,
+                coalesce(sum(w.stakeTokens), 0) as totalStake
+            )
+            from WagerEntity w
+            where w.eventId = :eventId
+            """)
     Map<String, Object> computeSummaryForEvent(
             @Param("eventId") UUID eventId,
             @Param("placed") WagerStatus placed
     );
 
+    /*
+     * IMPORTANT:
+     * Do NOT return Map<UUID, Long> directly from aggregate query.
+     * Spring Data JPA returns TupleBackedMap internally, causing UUID/String cast issues.
+     */
     @Query("""
-SELECT w.eventId, COUNT(DISTINCT w.userId)
-FROM WagerEntity w
-WHERE w.eventId IN :eventIds
-GROUP BY w.eventId
-""")
-    Map<UUID, Long> countUsersBulk(@Param("eventIds") List<UUID> eventIds);
+            select w.eventId as eventId,
+                   count(distinct w.userId) as usersCount
+            from WagerEntity w
+            where w.eventId in :eventIds
+            group by w.eventId
+            """)
+    List<EventUserCountRow> countUsersBulkRows(@Param("eventIds") List<UUID> eventIds);
 
     @Query("""
-SELECT w.eventId, SUM(w.stakeTokens)
-FROM WagerEntity w
-WHERE w.eventId IN :eventIds
-GROUP BY w.eventId
-""")
-    Map<UUID, Integer> sumPotBulk(@Param("eventIds")List<UUID> eventIds);
+            select w.eventId as eventId,
+                   coalesce(sum(w.stakeTokens), 0) as potAmount
+            from WagerEntity w
+            where w.eventId in :eventIds
+            group by w.eventId
+            """)
+    List<EventPotRow> sumPotBulkRows(@Param("eventIds") List<UUID> eventIds);
 
     @Query("""
-SELECT w
-FROM WagerEntity w
-WHERE w.userId = :userId
-AND w.eventId IN :eventIds
-""")
-    List<WagerEntity> findByUserIdAndEventIdIn(@Param("userId")UUID userId, @Param("eventIds")List<UUID> eventIds);
+            select w
+            from WagerEntity w
+            where w.userId = :userId
+              and w.eventId in :eventIds
+            """)
+    List<WagerEntity> findByUserIdAndEventIdIn(
+            @Param("userId") UUID userId,
+            @Param("eventIds") List<UUID> eventIds
+    );
 
     Optional<WagerEntity> findByEventIdAndId(UUID eventId, UUID id);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("""
-        select w
-        from WagerEntity w
-        where w.eventId = :eventId
-          and w.status = :status
-    """)
+            select w
+            from WagerEntity w
+            where w.eventId = :eventId
+              and w.status = :status
+            """)
     List<WagerEntity> lockByEventIdAndStatus(
             @Param("eventId") UUID eventId,
             @Param("status") WagerStatus status
