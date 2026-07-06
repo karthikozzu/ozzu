@@ -6,8 +6,6 @@ import ai.ozzu.api.generated.model.EventLounge;
 import ai.ozzu.api.generated.model.EventLoungeCreateRequest;
 import ai.ozzu.api.persistence.entity.EventLoungeEntity;
 import ai.ozzu.api.service.EventLoungeService;
-import ai.ozzu.api.service.EventsService;
-import org.checkerframework.checker.units.qual.A;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
@@ -53,6 +51,9 @@ public class EventLoungesController implements EventLoungesApi {
                 eventLounge.setLoungeId(eventLoungeEntity.getLounge().getId());
                 eventLounge.setInternalProperties(eventLoungeEntity.getInternalProperties());
                 eventLounge.setIsActive(eventLoungeEntity.isActive());
+                eventLounge.setImageUrl(eventLoungeEntity.getImageUrl());
+                eventLounge.setVideoUrl(eventLoungeEntity.getVideoUrl());
+                eventLounge.setThumbnailUrl(eventLoungeEntity.getThumbnailUrl());
                 eventLounges.add(eventLounge);
             }
             return ResponseEntity.ok(eventLounges);

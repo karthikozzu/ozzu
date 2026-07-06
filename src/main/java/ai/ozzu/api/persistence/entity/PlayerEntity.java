@@ -34,6 +34,15 @@ public class PlayerEntity extends AuditedEntity {
     @Column(name="object_status")
     private String objectStatus;
 
+    @Column(name = "image_url")
+    private String imageUrl;
+
+    @Column(name = "video_url")
+    private String videoUrl;
+
+    @Column(name = "thumbnail_url")
+    private String thumbnailUrl;
+
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name="internal_properties", nullable=false, columnDefinition="jsonb")
     private Map<String, Object> internalProperties = Map.of();
@@ -80,5 +89,29 @@ public class PlayerEntity extends AuditedEntity {
 
     public void setInternalProperties(Map<String, Object> internalProperties) {
         this.internalProperties = internalProperties;
+    }
+
+    public String getImageUrl() {
+        return imageUrl;
+    }
+
+    public void setImageUrl(String imageUrl) {
+        this.imageUrl = imageUrl;
+    }
+
+    public String getVideoUrl() {
+        return videoUrl;
+    }
+
+    public void setVideoUrl(String videoUrl) {
+        this.videoUrl = videoUrl;
+    }
+
+    public String getThumbnailUrl() {
+        return thumbnailUrl;
+    }
+
+    public void setThumbnailUrl(String thumbnailUrl) {
+        this.thumbnailUrl = thumbnailUrl;
     }
 }

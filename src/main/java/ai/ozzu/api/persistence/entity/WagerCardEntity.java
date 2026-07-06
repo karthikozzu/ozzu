@@ -53,7 +53,10 @@ public class WagerCardEntity {
     private WagerCardTypeEntity wagerCardType;
 
     @Column(name = "status")
-    private String status;
+    private String status = "In Play";
+
+    @Column(name = "evaluate_card_expression")
+    private String evaluateCardExpression;
 
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "internal_properties", nullable = false, columnDefinition = "jsonb")
@@ -79,6 +82,10 @@ public class WagerCardEntity {
 
         if (internalProperties == null || internalProperties.isBlank()) {
             internalProperties = "{}";
+        }
+
+        if (status == null || status.isBlank()) {
+            status = "In Play";
         }
     }
 
@@ -143,5 +150,17 @@ public class WagerCardEntity {
 
     public void setUpdatedAt(OffsetDateTime updatedAt) {
         this.updatedAt = updatedAt;
+    }
+
+    public String getEvaluateCardExpression() {
+
+        return evaluateCardExpression;
+
+    }
+
+    public void setEvaluateCardExpression(String evaluateCardExpression) {
+
+        this.evaluateCardExpression = evaluateCardExpression;
+
     }
 }

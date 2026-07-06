@@ -153,6 +153,10 @@ public class WagerService {
         UserEntity user = userRepo.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("Invalid userId"));
 
+        if (wagerRepo.existsByUserIdAndEventId(userId, eventId)) {
+            throw new BadRequestException("User already has a wager for this event");
+        }
+
         DomainEntity domain = domainRepo.findById(domainId)
                 .orElseThrow(() -> new IllegalArgumentException("Invalid domainId"));
 
@@ -286,7 +290,8 @@ public class WagerService {
             WagerCardEntity wagerCard = new WagerCardEntity();
             wagerCard.setWager(wager);
             wagerCard.setWagerCardType(cardType);
-            wagerCard.setStatus(WagerStatus.CREATED.name());
+            wagerCard.setStatus("In Play");
+            wagerCard.setEvaluateCardExpression(buildEvaluateCardExpression(cardReq));
             wagerCard.setInternalProperties("{}");
 
             wagerCard = wagerCardRepo.save(wagerCard);
@@ -295,6 +300,68 @@ public class WagerService {
                 createCardBinding(domainId, eventId, wager, wagerCard, bindingReq);
             }
         }
+    }
+
+    private String buildEvaluateCardExpression(WagerCreateCardRequest cardReq) {
+        if (cardReq == null || cardReq.getBindings() == null || cardReq.getBindings().isEmpty()) {
+            return null;
+        }
+
+        return cardReq.getBindings()
+                .stream()
+                .map(binding -> {
+                    String concept;
+
+                    if (binding.getConceptId() != null) {
+                        concept = "concept:" + binding.getConceptId();
+                    } else {
+                        concept = "concept:from-card-type-binding";
+                    }
+
+                    String actor;
+
+                    if (binding.getPlayerId() != null) {
+                        actor = "player:" + binding.getPlayerId();
+                    } else if (binding.getTeamId() != null) {
+                        actor = "team:" + binding.getTeamId();
+                    } else if (binding.getScopedReferentId() != null) {
+                        actor = "scopedReferent:" + binding.getScopedReferentId();
+                    } else {
+                        actor = "actor:none";
+                    }
+
+                    String selected;
+
+                    if (binding.getBindingValueId() != null) {
+                        selected = "bindingValue:" + binding.getBindingValueId();
+                    } else if (binding.getValue() != null && !binding.getValue().isBlank()) {
+                        selected = "value:" + binding.getValue();
+                    } else if (binding.getPickPayload() != null) {
+                        Map<String, Object> payload = toMap(binding.getPickPayload());
+
+                        Object selectedValue = payload.get("selectedValue");
+                        Object value = payload.get("value");
+                        Object bindingValueId = payload.get("bindingValueId");
+                        Object selectedConceptTermId = payload.get("selectedConceptTermId");
+
+                        if (selectedConceptTermId != null) {
+                            selected = "bindingValue:" + selectedConceptTermId;
+                        } else if (bindingValueId != null) {
+                            selected = "bindingValue:" + bindingValueId;
+                        } else if (selectedValue != null) {
+                            selected = "value:" + selectedValue;
+                        } else if (value != null) {
+                            selected = "value:" + value;
+                        } else {
+                            selected = "value:none";
+                        }
+                    } else {
+                        selected = "value:none";
+                    }
+
+                    return concept + "[" + actor + "]=" + selected;
+                })
+                .collect(Collectors.joining(" AND "));
     }
 
     private void createCardBinding(
@@ -682,18 +749,14 @@ public class WagerService {
 
     private String resolveWagerCardStatus(WagerCardEntity wagerCardEntity) {
         if (wagerCardEntity == null) {
-            return null;
+            return "In Play";
         }
 
         if (wagerCardEntity.getStatus() != null && !wagerCardEntity.getStatus().isBlank()) {
             return wagerCardEntity.getStatus();
         }
 
-        if (wagerCardEntity.getWager() != null && wagerCardEntity.getWager().getStatus() != null) {
-            return wagerCardEntity.getWager().getStatus().name();
-        }
-
-        return "CREATED";
+        return "In Play";
     }
 
     private String resolveBindingValue(WagerCardBindingEntity bindingEntity) {

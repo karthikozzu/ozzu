@@ -14,12 +14,14 @@ import ai.ozzu.api.persistence.repo.ConceptTermRepository;
 import ai.ozzu.api.persistence.repo.DomainRepository;
 import ai.ozzu.api.persistence.repo.WagerCardTypeBindingRepository;
 import ai.ozzu.api.persistence.repo.WagerCardTypeRepository;
+import jakarta.persistence.EntityNotFoundException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @Service
@@ -75,21 +77,34 @@ public class WagerCardTypeService {
     public WagerCardType createCardType(UUID domainId, WagerCardTypeCreateRequest req) {
         log.info("Creating wager card type: domainId={}, request={}", domainId, req);
 
-        DomainEntity domain = domainRepo.findById(domainId)
-                .orElseThrow(() -> {
-                    log.warn("Domain not found while creating wager card type: domainId={}", domainId);
-                    return new IllegalArgumentException("Domain not found: " + domainId);
-                });
-
         if (req == null) {
             throw new IllegalArgumentException("WagerCardTypeCreateRequest is required");
         }
+
+        if (req.getName() == null || req.getName().isBlank()) {
+            throw new IllegalArgumentException("name is required");
+        }
+
+        DomainEntity domain = domainRepo.findById(domainId)
+                .orElseThrow(() -> {
+                    log.warn("Domain not found while creating wager card type: domainId={}", domainId);
+                    return new EntityNotFoundException("Domain not found: " + domainId);
+                });
 
         WagerCardTypeEntity e = new WagerCardTypeEntity();
         e.setDomain(domain);
         e.setName(req.getName());
         e.setDescription(req.getDescription());
-        e.setInternalProperties(req.getInternalProperties());
+        e.setMaxBindings(req.getMaxBindings());
+        e.setInternalProperties(
+                req.getInternalProperties() != null ? req.getInternalProperties() : Map.of()
+        );
+
+        /*
+         * category, isFoundation, imageUrl, videoUrl, thumbnailUrl
+         * are backend-seeded as per July 5th doc.
+         * No POST API change needed.
+         */
 
         WagerCardTypeEntity saved = cardTypeRepo.save(e);
 
@@ -111,7 +126,7 @@ public class WagerCardTypeService {
                 .filter(ct -> ct.getDomain() != null && ct.getDomain().getId().equals(domainId))
                 .orElseThrow(() -> {
                     log.warn("WagerCardType not found: domainId={}, typeId={}", domainId, typeId);
-                    return new IllegalArgumentException("WagerCardType not found");
+                    return new EntityNotFoundException("WagerCardType not found: " + typeId);
                 });
 
         return toApiWithBindings(e);
@@ -143,7 +158,7 @@ public class WagerCardTypeService {
                             domainId,
                             typeId
                     );
-                    return new IllegalArgumentException("WagerCardType not found");
+                    return new EntityNotFoundException("WagerCardType not found: " + typeId);
                 });
 
         List<WagerCardTypeBinding> bindings = bindingRepo.findByWagerCardType_Id(type.getId())
@@ -178,6 +193,10 @@ public class WagerCardTypeService {
             throw new IllegalArgumentException("WagerCardTypeBindingCreateRequest is required");
         }
 
+        if (req.getConceptTermId() == null) {
+            throw new IllegalArgumentException("conceptTermId is required");
+        }
+
         WagerCardTypeEntity type = cardTypeRepo.findById(typeId)
                 .filter(ct -> ct.getDomain() != null && ct.getDomain().getId().equals(domainId))
                 .orElseThrow(() -> {
@@ -186,10 +205,11 @@ public class WagerCardTypeService {
                             domainId,
                             typeId
                     );
-                    return new IllegalArgumentException("WagerCardType not found");
+                    return new EntityNotFoundException("WagerCardType not found: " + typeId);
                 });
 
         ConceptTermEntity conceptTerm = conceptTermRepo.findById(req.getConceptTermId())
+                .filter(ct -> ct.getDomain() != null && ct.getDomain().getId().equals(domainId))
                 .orElseThrow(() -> {
                     log.warn(
                             "ConceptTerm not found while creating binding: conceptTermId={}, domainId={}, typeId={}",
@@ -197,14 +217,24 @@ public class WagerCardTypeService {
                             domainId,
                             typeId
                     );
-                    return new IllegalArgumentException("ConceptTerm not found");
+                    return new EntityNotFoundException("ConceptTerm not found: " + req.getConceptTermId());
                 });
 
         WagerCardTypeBindingEntity b = new WagerCardTypeBindingEntity();
         b.setDomain(type.getDomain());
         b.setWagerCardType(type);
         b.setConceptTerm(conceptTerm);
-        b.setInternalProperties(req.getInternalProperties());
+        b.setOptional(Boolean.TRUE.equals(req.getIsOptional()));
+        b.setGroupAffiliation(req.getGroupAffiliation());
+        b.setPointsValue(req.getPointsValue() != null ? req.getPointsValue() : 0);
+        b.setInternalProperties(
+                req.getInternalProperties() != null ? req.getInternalProperties() : Map.of()
+        );
+
+        /*
+         * imageUrl, videoUrl, thumbnailUrl are backend-seeded.
+         * No POST API change needed.
+         */
 
         WagerCardTypeBindingEntity saved = bindingRepo.save(b);
 
@@ -241,13 +271,25 @@ public class WagerCardTypeService {
         api.setDomainId(e.getDomain() != null ? e.getDomain().getId() : null);
         api.setName(e.getName());
         api.setDescription(e.getDescription());
+        api.setMaxBindings(e.getMaxBindings());
 
-        //api.setMaxBindings(e.getMaxBindings());
+        if (e.getCategory() != null) {
+            api.setCategoryId(e.getCategory().getId());
+            api.setCategoryName(e.getCategory().getCategoryName());
+        }
+
+        api.setIsFoundation(e.isFoundation());
+
+        api.setImageUrl(e.getImageUrl());
+        api.setVideoUrl(e.getVideoUrl());
+        api.setThumbnailUrl(e.getThumbnailUrl());
 
         api.setTimeCreated(e.getCreatedAt());
         api.setTimeUpdated(e.getUpdatedAt());
 
-        api.setInternalProperties(e.getInternalProperties());
+        api.setInternalProperties(
+                e.getInternalProperties() != null ? e.getInternalProperties() : Map.of()
+        );
 
         return api;
     }
@@ -258,16 +300,27 @@ public class WagerCardTypeService {
         WagerCardTypeBinding api = new WagerCardTypeBinding();
 
         api.setId(e.getId());
-        api.setWagerCardTypeId(e.getWagerCardType() != null ? e.getWagerCardType().getId() : null);
-        api.setConceptTermId(e.getConceptTerm() != null ? e.getConceptTerm().getId() : null);
+        api.setWagerCardTypeId(
+                e.getWagerCardType() != null ? e.getWagerCardType().getId() : null
+        );
+        api.setConceptTermId(
+                e.getConceptTerm() != null ? e.getConceptTerm().getId() : null
+        );
 
-        //api.setIsOptional(e.getIsOptional());
-        //api.setGroupAffiliation(e.getGroupAffiliation());
-        //api.setPointsValue(e.getPointsValue());
+        api.setIsOptional(e.isOptional());
+        api.setGroupAffiliation(e.getGroupAffiliation());
+        api.setPointsValue(e.getPointsValue());
+
+        api.setImageUrl(e.getImageUrl());
+        api.setVideoUrl(e.getVideoUrl());
+        api.setThumbnailUrl(e.getThumbnailUrl());
+        api.setDescription(e.getDescription());
         api.setTimeCreated(e.getCreatedAt());
-        //api.setTimeUpdated(e.getUpdatedAt());
+        api.setTimeUpdated(e.getUpdatedAt());
 
-        api.setInternalProperties(e.getInternalProperties());
+        api.setInternalProperties(
+                e.getInternalProperties() != null ? e.getInternalProperties() : Map.of()
+        );
 
         return api;
     }

@@ -154,4 +154,6 @@ public interface WagerRepository extends JpaRepository<WagerEntity, UUID> {
             @Param("eventId") UUID eventId,
             @Param("status") WagerStatus status
     );
+
+    boolean existsByUserIdAndEventId(UUID userId, UUID eventId);
 }

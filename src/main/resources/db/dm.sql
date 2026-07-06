@@ -759,10 +759,6 @@ CREATE INDEX IF NOT EXISTS ix_lounge_notifications_lounge_time
 ALTER TABLE wager_card_bindings
     ADD COLUMN IF NOT EXISTS concept_term_id uuid;
 
-ALTER TABLE wager_card_bindings
-    ADD CONSTRAINT fk_wcb_concept_term
-        FOREIGN KEY (concept_term_id) REFERENCES concept_terms(id) ON DELETE RESTRICT;
-
 -- =========================================================
 -- TRIGGERS / FUNCTIONS
 -- =========================================================
@@ -1492,3 +1488,154 @@ DO $$
 
 CREATE INDEX IF NOT EXISTS ix_wcb_binding_value
     ON wager_card_bindings(binding_value_id);
+
+CREATE TABLE IF NOT EXISTS wager_card_type_categories (
+                                                          id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+                                                          domain_id uuid NOT NULL REFERENCES domains(id) ON DELETE CASCADE,
+                                                          category_name text NOT NULL,
+                                                          description text,
+                                                          created_at timestamptz NOT NULL DEFAULT now(),
+                                                          updated_at timestamptz NOT NULL DEFAULT now(),
+                                                          UNIQUE(domain_id, category_name)
+);
+
+CREATE INDEX IF NOT EXISTS ix_wct_categories_domain
+    ON wager_card_type_categories(domain_id);
+
+ALTER TABLE wager_card_types
+    ADD COLUMN IF NOT EXISTS category_id uuid;
+
+ALTER TABLE wager_card_types
+    ADD COLUMN IF NOT EXISTS is_foundation boolean NOT NULL DEFAULT false;
+
+ALTER TABLE wager_card_types
+    ADD COLUMN IF NOT EXISTS image_url text;
+
+ALTER TABLE wager_card_types
+    ADD COLUMN IF NOT EXISTS video_url text;
+
+ALTER TABLE wager_card_types
+    ADD COLUMN IF NOT EXISTS thumbnail_url text;
+
+DO $$
+    BEGIN
+        IF NOT EXISTS (
+            SELECT 1 FROM pg_constraint WHERE conname = 'fk_wct_category'
+        ) THEN
+            ALTER TABLE wager_card_types
+                ADD CONSTRAINT fk_wct_category
+                    FOREIGN KEY (category_id)
+                        REFERENCES wager_card_type_categories(id)
+                        ON DELETE SET NULL;
+        END IF;
+    END$$;
+
+CREATE INDEX IF NOT EXISTS ix_wager_card_types_category
+    ON wager_card_types(category_id);
+
+ALTER TABLE wager_card_type_bindings
+    ADD COLUMN IF NOT EXISTS image_url text;
+
+ALTER TABLE wager_card_type_bindings
+    ADD COLUMN IF NOT EXISTS video_url text;
+
+ALTER TABLE wager_card_type_bindings
+    ADD COLUMN IF NOT EXISTS thumbnail_url text;
+
+ALTER TABLE events
+    ADD COLUMN IF NOT EXISTS image_url text;
+
+ALTER TABLE events
+    ADD COLUMN IF NOT EXISTS video_url text;
+
+ALTER TABLE events
+    ADD COLUMN IF NOT EXISTS thumbnail_url text;
+
+ALTER TABLE players
+    ADD COLUMN IF NOT EXISTS image_url text;
+
+ALTER TABLE players
+    ADD COLUMN IF NOT EXISTS video_url text;
+
+ALTER TABLE players
+    ADD COLUMN IF NOT EXISTS thumbnail_url text;
+
+ALTER TABLE concept_terms
+    ADD COLUMN IF NOT EXISTS image_url text;
+
+ALTER TABLE concept_terms
+    ADD COLUMN IF NOT EXISTS video_url text;
+
+ALTER TABLE concept_terms
+    ADD COLUMN IF NOT EXISTS thumbnail_url text;
+
+ALTER TABLE teams
+    ADD COLUMN IF NOT EXISTS image_url text;
+
+ALTER TABLE teams
+    ADD COLUMN IF NOT EXISTS video_url text;
+
+ALTER TABLE teams
+    ADD COLUMN IF NOT EXISTS thumbnail_url text;
+
+ALTER TABLE lounges
+    ADD COLUMN IF NOT EXISTS image_url text;
+
+ALTER TABLE lounges
+    ADD COLUMN IF NOT EXISTS video_url text;
+
+ALTER TABLE lounges
+    ADD COLUMN IF NOT EXISTS thumbnail_url text;
+
+ALTER TABLE event_lounges
+    ADD COLUMN IF NOT EXISTS image_url text;
+
+ALTER TABLE event_lounges
+    ADD COLUMN IF NOT EXISTS video_url text;
+
+ALTER TABLE event_lounges
+    ADD COLUMN IF NOT EXISTS thumbnail_url text;
+
+ALTER TABLE wager_cards
+    ADD COLUMN IF NOT EXISTS evaluate_card_expression text;
+
+ALTER TABLE wager_cards
+    ADD COLUMN IF NOT EXISTS status text NOT NULL DEFAULT 'In Play';
+
+ALTER TABLE wager_cards
+    ADD COLUMN IF NOT EXISTS internal_properties jsonb NOT NULL DEFAULT '{}'::jsonb;
+
+ALTER TABLE wager_cards
+    ADD COLUMN IF NOT EXISTS updated_at timestamptz NOT NULL DEFAULT now();
+
+ALTER TABLE wager_card_bindings
+    ADD COLUMN IF NOT EXISTS binding_value_id uuid;
+
+ALTER TABLE wager_card_bindings
+    ADD COLUMN IF NOT EXISTS value text;
+
+DO $$
+    BEGIN
+        IF NOT EXISTS (
+            SELECT 1 FROM pg_constraint WHERE conname = 'fk_wcb_binding_value'
+        ) THEN
+            ALTER TABLE wager_card_bindings
+                ADD CONSTRAINT fk_wcb_binding_value
+                    FOREIGN KEY (binding_value_id)
+                        REFERENCES concept_terms(id)
+                        ON DELETE SET NULL;
+        END IF;
+    END$$;
+
+CREATE INDEX IF NOT EXISTS ix_wcb_binding_value
+    ON wager_card_bindings(binding_value_id);
+
+ALTER TYPE token_txn_type ADD VALUE IF NOT EXISTS 'WAGER_STAKE_DEBIT';
+ALTER TYPE token_txn_type ADD VALUE IF NOT EXISTS 'WAGER_PAYOUT_CREDIT';
+ALTER TYPE token_txn_type ADD VALUE IF NOT EXISTS 'WAGER_REFUND_CREDIT';
+ALTER TYPE token_txn_type ADD VALUE IF NOT EXISTS 'DEBIT_STAKE';
+ALTER TYPE token_txn_type ADD VALUE IF NOT EXISTS 'CREDIT_PAYOUT';
+ALTER TYPE token_txn_type ADD VALUE IF NOT EXISTS 'REFUND_VOID';
+
+CREATE UNIQUE INDEX IF NOT EXISTS ux_wagers_user_event
+    ON wagers(user_id, event_id);

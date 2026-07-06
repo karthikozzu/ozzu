@@ -175,6 +175,8 @@ public class TeamsService {
         t.setSeriesId(e.getSeries() != null ? e.getSeries().getId() : null);
         t.setName(e.getName());
         t.setImageUrl(e.getTeamPhotoUrl());
+        t.setVideoUrl(e.getVideoUrl());
+        t.setThumbnailUrl(e.getThumbnailUrl());
         t.setTimeCreated(e.getCreatedAt());
         t.setTimeUpdated(e.getUpdatedAt());
         t.setInternalProperties(e.getInternalProperties());

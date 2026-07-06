@@ -2,12 +2,14 @@ package ai.ozzu.api.service;
 
 import ai.ozzu.api.persistence.entity.EventScoreEntity;
 import ai.ozzu.api.persistence.entity.WagerCardBindingEntity;
+import ai.ozzu.api.persistence.entity.WagerCardEntity;
 import ai.ozzu.api.persistence.entity.WagerEntity;
 import ai.ozzu.api.persistence.enums.WagerOutcome;
 import ai.ozzu.api.persistence.enums.WagerStateEventEntity;
 import ai.ozzu.api.persistence.enums.WagerStatus;
 import ai.ozzu.api.persistence.repo.EventScoreRepository;
 import ai.ozzu.api.persistence.repo.WagerCardBindingRepository;
+import ai.ozzu.api.persistence.repo.WagerCardRepository;
 import ai.ozzu.api.persistence.repo.WagerRepository;
 import ai.ozzu.api.persistence.repo.WagerStateEventRepository;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -27,6 +29,7 @@ import java.util.UUID;
 public class WagerSettlementService {
 
     private final WagerRepository wagerRepo;
+    private final WagerCardRepository wagerCardRepo;
     private final WagerCardBindingRepository wagerCardBindingRepo;
     private final WagerStateEventRepository wagerStateEventRepo;
     private final EventScoreRepository eventScoreRepo;
@@ -35,6 +38,7 @@ public class WagerSettlementService {
 
     public WagerSettlementService(
             WagerRepository wagerRepo,
+            WagerCardRepository wagerCardRepo,
             WagerCardBindingRepository wagerCardBindingRepo,
             WagerStateEventRepository wagerStateEventRepo,
             EventScoreRepository eventScoreRepo,
@@ -42,6 +46,7 @@ public class WagerSettlementService {
             TokenLedgerService tokenLedgerService
     ) {
         this.wagerRepo = wagerRepo;
+        this.wagerCardRepo = wagerCardRepo;
         this.wagerCardBindingRepo = wagerCardBindingRepo;
         this.wagerStateEventRepo = wagerStateEventRepo;
         this.eventScoreRepo = eventScoreRepo;
@@ -50,7 +55,7 @@ public class WagerSettlementService {
     }
 
     /**
-     * This is the main settlement method.
+     * Main settlement method.
      *
      * Called from EventStatusService when event status becomes COMPLETED.
      */
@@ -156,7 +161,6 @@ public class WagerSettlementService {
         }
 
         String playerId = binding.getPlayer().getId().toString();
-
         JsonNode runsNode = scoreJson.at("/players/" + playerId + "/runs");
 
         if (runsNode.isMissingNode() || runsNode.isNull() || !runsNode.canConvertToInt()) {
@@ -183,7 +187,6 @@ public class WagerSettlementService {
         }
 
         String playerId = binding.getPlayer().getId().toString();
-
         JsonNode wicketsNode = scoreJson.at("/players/" + playerId + "/wickets");
 
         if (wicketsNode.isMissingNode() || wicketsNode.isNull() || !wicketsNode.canConvertToInt()) {
@@ -284,6 +287,8 @@ public class WagerSettlementService {
         wager.setPayoutTokens(payoutTokens);
         wager.setUpdatedAt(OffsetDateTime.now());
 
+        updateCardStatuses(wager, decision);
+
         wagerStateEventRepo.save(
                 WagerStateEventEntity.of(
                         wager,
@@ -324,6 +329,30 @@ public class WagerSettlementService {
         }
 
         return true;
+    }
+
+    private void updateCardStatuses(
+            WagerEntity wager,
+            SettlementDecision decision
+    ) {
+        List<WagerCardEntity> cards = wagerCardRepo.findByWager_Id(wager.getId());
+
+        String cardStatus;
+
+        if (decision.outcome() == WagerOutcome.WON) {
+            cardStatus = "Correct";
+        } else if (decision.outcome() == WagerOutcome.LOST) {
+            cardStatus = "Incorrect";
+        } else {
+            cardStatus = "In Play";
+        }
+
+        for (WagerCardEntity card : cards) {
+            card.setStatus(cardStatus);
+            card.setUpdatedAt(OffsetDateTime.now());
+        }
+
+        wagerCardRepo.saveAll(cards);
     }
 
     private int calculatePayoutTokens(
@@ -377,9 +406,6 @@ public class WagerSettlementService {
             return bestOdds;
         }
 
-        /*
-         * Fallback until real odds are implemented.
-         */
         return BigDecimal.valueOf(2.0);
     }
 

@@ -94,7 +94,7 @@ public class OddsService {
 
             // Fetch all picks (scoped referents) under this concept term
             List<OddsPickQuote> picks = scopedRepo
-                    .findByEventIdAndConceptTermId(eventId, b.getConceptTermId())
+                    .findByEventIdAndConceptTermId(eventId, b.getConceptTerm().getId())
                     .stream()
                     .map(sr -> {
 
@@ -115,7 +115,7 @@ public class OddsService {
             // Group picks under a binding
             return new OddsBindingQuote(
                     b.getId(),
-                    b.getConceptTermId(),
+                    b.getConceptTerm().getId(),
                     picks
             );
         }).toList();

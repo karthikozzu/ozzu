@@ -38,6 +38,15 @@ public class TeamEntity extends AuditedEntity {
     @Column(name="team_photo_url")
     private String teamPhotoUrl;
 
+    @Column(name = "image_url")
+    private String imageUrl;
+
+    @Column(name = "video_url")
+    private String videoUrl;
+
+    @Column(name = "thumbnail_url")
+    private String thumbnailUrl;
+
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name="internal_properties", nullable=false, columnDefinition="jsonb")
     private Map<String, Object> internalProperties = Map.of();
@@ -84,5 +93,29 @@ public class TeamEntity extends AuditedEntity {
 
     public void setTeamPhotoUrl(String teamPhotoUrl) {
         this.teamPhotoUrl = teamPhotoUrl;
+    }
+
+    public String getImageUrl() {
+        return imageUrl;
+    }
+
+    public void setImageUrl(String imageUrl) {
+        this.imageUrl = imageUrl;
+    }
+
+    public String getVideoUrl() {
+        return videoUrl;
+    }
+
+    public void setVideoUrl(String videoUrl) {
+        this.videoUrl = videoUrl;
+    }
+
+    public String getThumbnailUrl() {
+        return thumbnailUrl;
+    }
+
+    public void setThumbnailUrl(String thumbnailUrl) {
+        this.thumbnailUrl = thumbnailUrl;
     }
 }

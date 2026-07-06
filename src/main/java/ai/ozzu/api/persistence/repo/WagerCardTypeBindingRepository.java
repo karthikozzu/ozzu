@@ -4,6 +4,7 @@ import ai.ozzu.api.persistence.entity.WagerCardTypeBindingEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 public interface WagerCardTypeBindingRepository extends JpaRepository<WagerCardTypeBindingEntity, UUID> {
@@ -11,4 +12,10 @@ public interface WagerCardTypeBindingRepository extends JpaRepository<WagerCardT
   List<WagerCardTypeBindingEntity> findByConceptTerm_Id(UUID conceptTermId);
 
   List<WagerCardTypeBindingEntity> findByDomainIdAndWagerCardTypeId(UUID domainId, UUID wagerCardTypeId);
+
+  List<WagerCardTypeBindingEntity> findByWagerCardType_IdOrderByCreatedAtAsc(UUID wagerCardTypeId);
+
+  Optional<WagerCardTypeBindingEntity> findByIdAndWagerCardType_Id(UUID id, UUID wagerCardTypeId);
+
+  boolean existsByWagerCardType_IdAndConceptTerm_Id(UUID wagerCardTypeId, UUID conceptTermId);
 }

@@ -77,6 +77,15 @@ public class EventEntity extends AuditedEntity {
     @Column(name = "event_image_url")
     private String eventImageUrl;
 
+    @Column(name = "image_url")
+    private String imageUrl;
+
+    @Column(name = "video_url")
+    private String videoUrl;
+
+    @Column(name = "thumbnail_url")
+    private String thumbnailUrl;
+
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name="internal_properties", nullable=false, columnDefinition="jsonb")
     private Map<String, Object> internalProperties = Map.of();
@@ -215,5 +224,29 @@ public class EventEntity extends AuditedEntity {
 
     public void setEventImageUrl(String eventImageUrl) {
         this.eventImageUrl = eventImageUrl;
+    }
+
+    public String getImageUrl() {
+        return imageUrl;
+    }
+
+    public void setImageUrl(String imageUrl) {
+        this.imageUrl = imageUrl;
+    }
+
+    public String getVideoUrl() {
+        return videoUrl;
+    }
+
+    public void setVideoUrl(String videoUrl) {
+        this.videoUrl = videoUrl;
+    }
+
+    public String getThumbnailUrl() {
+        return thumbnailUrl;
+    }
+
+    public void setThumbnailUrl(String thumbnailUrl) {
+        this.thumbnailUrl = thumbnailUrl;
     }
 }

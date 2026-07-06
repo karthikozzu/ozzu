@@ -1656,6 +1656,12 @@ components:
         description: { type: string }
         timeCreated: { $ref: "#/components/schemas/Timestamp" }
         timeUpdated: { $ref: "#/components/schemas/Timestamp" }
+        imageUrl:
+          type: string
+        videoUrl:
+          type: string
+        thumbnailUrl:
+          type: string
         internalProperties:
           $ref: "#/components/schemas/InternalProperties"
 
@@ -1682,6 +1688,10 @@ components:
         name: { type: string }
         description: { type: string }
         imageUrl: {type: string, format: url}
+        videoUrl:
+          type: string
+        thumbnailUrl:
+          type: string
         timeCreated: { $ref: "#/components/schemas/Timestamp" }
         timeUpdated: { $ref: "#/components/schemas/Timestamp" }
         internalProperties:
@@ -1715,6 +1725,12 @@ components:
         isInternal: { type: boolean }
         timeCreated: { $ref: "#/components/schemas/Timestamp" }
         timeUpdated: { $ref: "#/components/schemas/Timestamp" }
+        imageUrl:
+          type: string
+        videoUrl:
+          type: string
+        thumbnailUrl:
+          type: string
         internalProperties:
           $ref: "#/components/schemas/InternalProperties"
 
@@ -2073,6 +2089,21 @@ components:
           type: string
         maxBindings:
           type: integer
+
+        categoryId:
+          $ref: "#/components/schemas/UUID"
+        categoryName:
+          type: string
+        isFoundation:
+          type: boolean
+
+        imageUrl:
+          type: string
+        videoUrl:
+          type: string
+        thumbnailUrl:
+          type: string
+
         bindings:
           type: array
           items:
@@ -2099,6 +2130,14 @@ components:
           type: string
         pointsValue:
           type: integer
+        imageUrl:
+          type: string
+        videoUrl:
+          type: string
+        thumbnailUrl:
+          type: string
+        description:
+          type: string
         timeCreated:
           $ref: "#/components/schemas/Timestamp"
         timeUpdated:
@@ -2199,6 +2238,12 @@ components:
         description: { type: string }
         timeCreated: { $ref: "#/components/schemas/Timestamp" }
         timeUpdated: { $ref: "#/components/schemas/Timestamp" }
+        imageUrl:
+          type: string
+        videoUrl:
+          type: string
+        thumbnailUrl:
+          type: string
         internalProperties:
           $ref: "#/components/schemas/InternalProperties"
 
@@ -2226,6 +2271,12 @@ components:
         isActive: { type: boolean }
         timeCreated: { $ref: "#/components/schemas/Timestamp" }
         timeUpdated: { $ref: "#/components/schemas/Timestamp" }
+        imageUrl:
+          type: string
+        videoUrl:
+          type: string
+        thumbnailUrl:
+          type: string
         internalProperties:
           $ref: "#/components/schemas/InternalProperties"
 
@@ -2440,7 +2491,12 @@ components:
           type: string
         description:
           type: string
-
+        imageUrl:
+          type: string
+        videoUrl:
+          type: string
+        thumbnailUrl:
+          type: string
         eventImageUrl:
           type: string
           format: uri

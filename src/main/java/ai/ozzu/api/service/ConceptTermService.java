@@ -155,6 +155,9 @@ public class ConceptTermService {
         api.setInternalProperties(e.getInternalProperties());
         api.setTimeCreated(e.getCreatedAt());
         api.setTimeUpdated(e.getUpdatedAt());
+        api.setImageUrl(e.getImageUrl());
+        api.setVideoUrl(e.getVideoUrl());
+        api.setThumbnailUrl(e.getThumbnailUrl());
         return api;
     }
 

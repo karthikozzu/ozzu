@@ -330,11 +330,13 @@ public class EventsService {
         api.setIsSpotlight(e.isSpotlight());
 
         api.setObjectStatus(e.getStatus() != null ? e.getStatus().name() : null);
-
+        api.setImageUrl(e.getImageUrl());
+        api.setVideoUrl(e.getVideoUrl());
+        api.setThumbnailUrl(e.getThumbnailUrl());
         api.setTimeCreated(e.getCreatedAt());
         api.setTimeUpdated(e.getUpdatedAt());
         api.setInternalProperties(e.getInternalProperties());
-
+        api.setEventImageUrl(URI.create(e.getEventImageUrl()));
         api.setTeams(mapTeams(e));
         api.setScoreSummary(mapScoreSummary(e.getInternalProperties()));
     }
@@ -358,9 +360,11 @@ public class EventsService {
         api.setIsEventCanceled(e.isCanceled());
         api.setIsEventCompleted(e.isCompleted());
         api.setIsSpotlight(e.isSpotlight());
-
+        api.setImageUrl(e.getImageUrl());
+        api.setVideoUrl(e.getVideoUrl());
+        api.setThumbnailUrl(e.getThumbnailUrl());
         api.setObjectStatus(e.getStatus() != null ? e.getStatus().name() : null);
-
+        api.setEventImageUrl(URI.create(e.getEventImageUrl()));
         api.setTimeCreated(e.getCreatedAt());
         api.setTimeUpdated(e.getUpdatedAt());
         api.setInternalProperties(e.getInternalProperties());

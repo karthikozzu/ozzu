@@ -113,6 +113,9 @@ public class PlayersService {
         p.setTimeCreated(e.getCreatedAt());
         p.setTimeUpdated(e.getUpdatedAt());
         p.setInternalProperties(e.getInternalProperties());
+        p.setImageUrl(e.getImageUrl());
+        p.setVideoUrl(e.getVideoUrl());
+        p.setThumbnailUrl(e.getThumbnailUrl());
         return p;
     }
 }
