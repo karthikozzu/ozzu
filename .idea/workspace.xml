@@ -5,32 +5,9 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="7e4d98bc-5cdc-4c99-8099-a19e10a9930c" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/persistence/entity/WagerCardTypeCategoryEntity.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/persistence/repo/WagerCardTypeCategoryRepository.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/controller/EventLoungesController.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/controller/EventLoungesController.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/persistence/entity/ConceptTermEntity.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/persistence/entity/ConceptTermEntity.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/persistence/entity/EventEntity.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/persistence/entity/EventEntity.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/persistence/entity/EventLoungeEntity.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/persistence/entity/EventLoungeEntity.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/persistence/entity/LoungeEntity.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/persistence/entity/LoungeEntity.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/persistence/entity/PlayerEntity.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/persistence/entity/PlayerEntity.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/persistence/entity/TeamEntity.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/persistence/entity/TeamEntity.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/persistence/entity/WagerCardEntity.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/persistence/entity/WagerCardEntity.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/persistence/entity/WagerCardTypeBindingEntity.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/persistence/entity/WagerCardTypeBindingEntity.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/persistence/entity/WagerCardTypeEntity.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/persistence/entity/WagerCardTypeEntity.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/persistence/repo/WagerCardTypeBindingRepository.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/persistence/repo/WagerCardTypeBindingRepository.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/persistence/repo/WagerCardTypeRepository.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/persistence/repo/WagerCardTypeRepository.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/persistence/repo/WagerRepository.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/persistence/repo/WagerRepository.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/service/ConceptTermService.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/service/ConceptTermService.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/service/EventsService.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/service/EventsService.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/service/LoungeService.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/service/LoungeService.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/service/OddsService.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/service/OddsService.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/controller/TeamPlayerController.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/controller/TeamPlayerController.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/service/PlayersService.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/service/PlayersService.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/service/TeamsService.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/service/TeamsService.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/service/WagerCardTypeService.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/service/WagerCardTypeService.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/service/WagerService.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/service/WagerService.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/service/WagerSettlementService.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/service/WagerSettlementService.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/resources/db/dm.sql" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/resources/db/dm.sql" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main/resources/openapi/ozzu_api.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/resources/openapi/ozzu_api.yaml" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -182,7 +159,7 @@
       <workItem from="1773545405389" duration="27523000" />
       <workItem from="1776697098770" duration="20532000" />
       <workItem from="1778385529883" duration="12876000" />
-      <workItem from="1781367001905" duration="22462000" />
+      <workItem from="1781367001905" duration="23639000" />
     </task>
     <servers />
   </component>

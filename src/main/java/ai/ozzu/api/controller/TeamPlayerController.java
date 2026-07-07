@@ -36,4 +36,10 @@ public class TeamPlayerController implements PlayersApi {
         Player created = playersService.createPlayer(domainId, playerCreateRequest);
         return ResponseEntity.status(201).body(created);
     }
+
+    @Override
+    public ResponseEntity<Player> ozzuDomainsDomainIdPlayersPlayerIdGet(UUID domainId, UUID playerId) {
+        Player player = playersService.getPlayer(domainId, playerId);
+        return ResponseEntity.ok(player);
+    }
 }

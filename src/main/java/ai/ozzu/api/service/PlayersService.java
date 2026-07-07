@@ -47,6 +47,16 @@ public class PlayersService {
         return players;
     }
 
+    @Transactional(readOnly = true)
+    public Player getPlayer(UUID domainId, UUID playerId) {
+        PlayerEntity player = playerRepository.findByIdAndDomain_Id(playerId, domainId)
+                .orElseThrow(() -> new EntityNotFoundException(
+                        "Player not found: " + playerId
+                ));
+
+        return toApi(player);
+    }
+
     @Transactional
     public Player createPlayer(UUID domainId, PlayerCreateRequest req) {
         log.info("Creating player in domainId={} with request={}", domainId, req);
