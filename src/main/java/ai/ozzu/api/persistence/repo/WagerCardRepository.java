@@ -7,5 +7,6 @@ import java.util.List;
 import java.util.UUID;
 
 public interface WagerCardRepository extends JpaRepository<WagerCardEntity, UUID> {
+
   List<WagerCardEntity> findByWager_Id(UUID wagerId);
 }

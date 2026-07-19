@@ -8,6 +8,7 @@ import ai.ozzu.api.generated.model.WagerCardBinding;
 import ai.ozzu.api.generated.model.WagerCreateCardBindingRequest;
 import ai.ozzu.api.generated.model.WagerCreateCardRequest;
 import ai.ozzu.api.generated.model.WagerCreateRequest;
+import ai.ozzu.api.generated.model.WagerEnteredEventLounge;
 import ai.ozzu.api.persistence.entity.ConceptTermEntity;
 import ai.ozzu.api.persistence.entity.DomainEntity;
 import ai.ozzu.api.persistence.entity.EventEntity;
@@ -33,6 +34,7 @@ import ai.ozzu.api.persistence.repo.WagerCardBindingRepository;
 import ai.ozzu.api.persistence.repo.WagerCardRepository;
 import ai.ozzu.api.persistence.repo.WagerCardTypeBindingRepository;
 import ai.ozzu.api.persistence.repo.WagerCardTypeRepository;
+import ai.ozzu.api.persistence.repo.WagerInLoungeRepository;
 import ai.ozzu.api.persistence.repo.WagerRepository;
 import ai.ozzu.api.utils.CursorHelper;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -49,8 +51,10 @@ import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -59,23 +63,25 @@ public class WagerService {
 
     private static final Logger log = LoggerFactory.getLogger(WagerService.class);
 
+    private static final String CUSTOMIZATION_COMPLETE = "COMPLETE";
+    private static final String CUSTOMIZATION_INCOMPLETE = "INCOMPLETE";
+    private static final String CARD_STATUS_IN_PLAY = "In Play";
+
     private final EventRepository eventRepo;
     private final WagerRepository wagerRepo;
     private final WagerCardRepository wagerCardRepo;
     private final WagerCardBindingRepository wagerCardBindingRepo;
-
     private final WagerCardTypeRepository wagerCardTypeRepo;
     private final WagerCardTypeBindingRepository wagerCardTypeBindingRepo;
     private final ScopedReferentRepository scopedReferentRepo;
     private final PlayerRepository playerRepo;
     private final TeamRepository teamRepo;
     private final ConceptTermRepository conceptTermRepo;
-
     private final UserRepository userRepo;
     private final DomainRepository domainRepo;
-
     private final TokenLedgerService tokenLedgerService;
     private final ObjectMapper objectMapper;
+    private final WagerInLoungeRepository wagerInLoungeRepo;
 
     public WagerService(
             EventRepository eventRepo,
@@ -91,7 +97,8 @@ public class WagerService {
             UserRepository userRepo,
             DomainRepository domainRepo,
             TokenLedgerService tokenLedgerService,
-            ObjectMapper objectMapper
+            ObjectMapper objectMapper,
+            WagerInLoungeRepository wagerInLoungeRepo
     ) {
         this.eventRepo = eventRepo;
         this.wagerRepo = wagerRepo;
@@ -107,6 +114,7 @@ public class WagerService {
         this.domainRepo = domainRepo;
         this.tokenLedgerService = tokenLedgerService;
         this.objectMapper = objectMapper;
+        this.wagerInLoungeRepo = wagerInLoungeRepo;
     }
 
     @Transactional
@@ -144,8 +152,8 @@ public class WagerService {
                 .orElseThrow(() -> new IllegalArgumentException("Invalid event/domain"));
 
         if (event.getStatus() != EventStatus.SCHEDULED) {
-            throw new IllegalStateException(
-                    "Wagers can be created only before event starts. Current event status: "
+            throw new BadRequestException(
+                    "Wagers can be created or modified only when event is SCHEDULED. Current event status: "
                             + event.getStatus()
             );
         }
@@ -153,14 +161,29 @@ public class WagerService {
         UserEntity user = userRepo.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("Invalid userId"));
 
-        if (wagerRepo.existsByUserIdAndEventId(userId, eventId)) {
-            throw new BadRequestException("User already has a wager for this event");
-        }
-
         DomainEntity domain = domainRepo.findById(domainId)
                 .orElseThrow(() -> new IllegalArgumentException("Invalid domainId"));
 
+        /*
+         * One user + one event = one wager.
+         * If existing wager is present and event is still SCHEDULED, override it.
+         */
+        wagerRepo.findByUserIdAndEventId(userId, eventId)
+                .ifPresent(existing -> {
+                    log.info(
+                            "wager.override.existing domainId={} eventId={} userId={} oldWagerId={}",
+                            domainId,
+                            eventId,
+                            userId,
+                            existing.getId()
+                    );
+
+                    wagerRepo.delete(existing);
+                    wagerRepo.flush();
+                });
+
         int stake = req.getStakeTokens() != null ? req.getStakeTokens() : 0;
+        String customizationStatus = resolveCustomizationStatus(req);
 
         WagerEntity wager = new WagerEntity();
         wager.setEventId(eventId);
@@ -169,6 +192,7 @@ public class WagerService {
         wager.setName(req.getName());
         wager.setStakeTokens(stake);
         wager.setStatus(WagerStatus.CREATED);
+        wager.setCustomizationStatus(customizationStatus);
         wager.setInternalProperties(mapToJsonString(req.getInternalProperties()));
         wager.setUpdatedAt(OffsetDateTime.now());
 
@@ -177,28 +201,34 @@ public class WagerService {
         createCardsAndBindings(domainId, eventId, wager, req);
 
         try {
-            tokenLedgerService.debitStakeOnce(user, domain, event, wager, stake, idemKey);
+            if (CUSTOMIZATION_COMPLETE.equals(customizationStatus)) {
+                tokenLedgerService.debitStakeOnce(user, domain, event, wager, stake, idemKey);
 
-            WagerStatus oldStatus = wager.getStatus();
+                WagerStatus oldStatus = wager.getStatus();
 
-            if (!WagerStatus.canTransition(oldStatus, WagerStatus.PLACED)) {
-                throw new IllegalStateException(
-                        "Invalid transition " + oldStatus + " → " + WagerStatus.PLACED
-                );
+                if (!WagerStatus.canTransition(oldStatus, WagerStatus.PLACED)) {
+                    throw new IllegalStateException(
+                            "Invalid transition " + oldStatus + " → " + WagerStatus.PLACED
+                    );
+                }
+
+                wager.setStatus(WagerStatus.PLACED);
+            } else {
+                wager.setStatus(WagerStatus.CREATED);
             }
 
-            wager.setStatus(WagerStatus.PLACED);
             wager.setUpdatedAt(OffsetDateTime.now());
-
             wager = wagerRepo.saveAndFlush(wager);
 
             log.info(
-                    "wager.create.success domainId={} eventId={} wagerId={} userId={} stakeTokens={}",
+                    "wager.create.success domainId={} eventId={} wagerId={} userId={} stakeTokens={} customizationStatus={} status={}",
                     domainId,
                     eventId,
                     wager.getId(),
                     userId,
-                    stake
+                    stake,
+                    wager.getCustomizationStatus(),
+                    wager.getStatus()
             );
 
         } catch (RuntimeException ex) {
@@ -228,7 +258,7 @@ public class WagerService {
             throw new BadRequestException("name is required");
         }
 
-        if (req.getStakeTokens() == null || req.getStakeTokens() < 0) {
+        if (req.getStakeTokens() != null && req.getStakeTokens() < 0) {
             throw new BadRequestException("stakeTokens must be greater than or equal to 0");
         }
 
@@ -241,22 +271,36 @@ public class WagerService {
             throw new BadRequestException("wagerCards is required");
         }
 
-        if (req.getWagerCards().size() > 5) {
-            throw new BadRequestException("maximum 5 wagerCards are allowed");
+        if (req.getWagerCards().size() > 6) {
+            throw new BadRequestException("maximum 6 wagerCards are allowed: 1 foundation/winner card + 5 custom cards");
         }
+
+        Set<UUID> cardTypeIds = new HashSet<>();
+        Set<UUID> conceptIds = new HashSet<>();
+        Set<UUID> bindingValueIds = new HashSet<>();
 
         for (WagerCreateCardRequest card : req.getWagerCards()) {
             if (card == null || card.getWagerCardTypeId() == null) {
                 throw new BadRequestException("wagerCardTypeId is required for every wagerCard");
             }
 
+            if (!cardTypeIds.add(card.getWagerCardTypeId())) {
+                throw new BadRequestException(
+                        "duplicate wagerCardTypeId is not allowed: " + card.getWagerCardTypeId()
+                );
+            }
+
+            /*
+             * Partial card allowed:
+             * card selected, but no bindings yet.
+             */
             if (card.getBindings() == null || card.getBindings().isEmpty()) {
-                throw new BadRequestException("bindings is required for every wagerCard");
+                continue;
             }
 
             for (WagerCreateCardBindingRequest binding : card.getBindings()) {
                 if (binding == null || binding.getWagerCardTypeBindingId() == null) {
-                    throw new BadRequestException("wagerCardTypeBindingId is required for every binding");
+                    throw new BadRequestException("wagerCardTypeBindingId is required for every customized binding");
                 }
 
                 boolean hasPick =
@@ -268,11 +312,54 @@ public class WagerService {
 
                 if (!hasPick) {
                     throw new BadRequestException(
-                            "each binding must include scopedReferentId, playerId, teamId, bindingValueId, or value"
+                            "customized binding must include scopedReferentId, playerId, teamId, bindingValueId, or value"
                     );
+                }
+
+                if (binding.getConceptId() != null && !conceptIds.add(binding.getConceptId())) {
+                    throw new BadRequestException("duplicate conceptId is not allowed: " + binding.getConceptId());
+                }
+
+                if (binding.getBindingValueId() != null && !bindingValueIds.add(binding.getBindingValueId())) {
+                    throw new BadRequestException("duplicate bindingValueId is not allowed: " + binding.getBindingValueId());
                 }
             }
         }
+    }
+
+    private String resolveCustomizationStatus(WagerCreateRequest req) {
+        if (req == null || req.getWagerCards() == null) {
+            return CUSTOMIZATION_INCOMPLETE;
+        }
+
+        /*
+         * Only exactly 6 fully customized cards should be considered complete.
+         * Anything less should be CREATED / INCOMPLETE and skipped from settlement.
+         */
+        if (req.getWagerCards().size() < 6) {
+            return CUSTOMIZATION_INCOMPLETE;
+        }
+
+        for (WagerCreateCardRequest card : req.getWagerCards()) {
+            if (card.getBindings() == null || card.getBindings().isEmpty()) {
+                return CUSTOMIZATION_INCOMPLETE;
+            }
+
+            for (WagerCreateCardBindingRequest binding : card.getBindings()) {
+                boolean hasPick =
+                        binding.getScopedReferentId() != null
+                                || binding.getPlayerId() != null
+                                || binding.getTeamId() != null
+                                || binding.getBindingValueId() != null
+                                || (binding.getValue() != null && !binding.getValue().isBlank());
+
+                if (!hasPick) {
+                    return CUSTOMIZATION_INCOMPLETE;
+                }
+            }
+        }
+
+        return CUSTOMIZATION_COMPLETE;
     }
 
     private void createCardsAndBindings(
@@ -287,14 +374,24 @@ public class WagerService {
                             "Invalid wagerCardTypeId: " + cardReq.getWagerCardTypeId()
                     ));
 
+            String cardCustomizationStatus =
+                    cardReq.getBindings() == null || cardReq.getBindings().isEmpty()
+                            ? CUSTOMIZATION_INCOMPLETE
+                            : CUSTOMIZATION_COMPLETE;
+
             WagerCardEntity wagerCard = new WagerCardEntity();
             wagerCard.setWager(wager);
             wagerCard.setWagerCardType(cardType);
-            wagerCard.setStatus("In Play");
+            wagerCard.setStatus(CARD_STATUS_IN_PLAY);
+            wagerCard.setCustomizationStatus(cardCustomizationStatus);
             wagerCard.setEvaluateCardExpression(buildEvaluateCardExpression(cardReq));
             wagerCard.setInternalProperties("{}");
 
             wagerCard = wagerCardRepo.save(wagerCard);
+
+            if (cardReq.getBindings() == null || cardReq.getBindings().isEmpty()) {
+                continue;
+            }
 
             for (WagerCreateCardBindingRequest bindingReq : cardReq.getBindings()) {
                 createCardBinding(domainId, eventId, wager, wagerCard, bindingReq);
@@ -310,13 +407,9 @@ public class WagerService {
         return cardReq.getBindings()
                 .stream()
                 .map(binding -> {
-                    String concept;
-
-                    if (binding.getConceptId() != null) {
-                        concept = "concept:" + binding.getConceptId();
-                    } else {
-                        concept = "concept:from-card-type-binding";
-                    }
+                    String concept = binding.getConceptId() != null
+                            ? "concept:" + binding.getConceptId()
+                            : "concept:from-card-type-binding";
 
                     String actor;
 
@@ -457,7 +550,6 @@ public class WagerService {
         }
 
         binding.setPickPayload(payload);
-
         lockOddsFromPayload(binding, payload);
 
         binding = wagerCardBindingRepo.save(binding);
@@ -576,8 +668,14 @@ public class WagerService {
             entityPage = entityPage.subList(0, effectiveLimit);
         }
 
+        Map<UUID, List<WagerEnteredEventLounge>> enteredLoungesByWagerId =
+                loadEnteredLoungesByWagerId(entityPage);
+
         List<Wager> wagers = entityPage.stream()
-                .map(this::toApiModelWithCards)
+                .map(wager -> toApiModelWithCards(
+                        wager,
+                        enteredLoungesByWagerId.getOrDefault(wager.getId(), List.of())
+                ))
                 .collect(Collectors.toList());
 
         String nextCursor = null;
@@ -590,7 +688,40 @@ public class WagerService {
         return new PageResult<>(wagers, nextCursor, hasMore);
     }
 
+    private Map<UUID, List<WagerEnteredEventLounge>> loadEnteredLoungesByWagerId(
+            List<WagerEntity> wagers
+    ) {
+        if (wagers == null || wagers.isEmpty()) {
+            return Map.of();
+        }
+
+        List<UUID> wagerIds = wagers.stream()
+                .map(WagerEntity::getId)
+                .toList();
+
+        return wagerInLoungeRepo.findEnteredLoungesForWagers(wagerIds)
+                .stream()
+                .map(row -> {
+                    WagerEnteredEventLounge item = new WagerEnteredEventLounge();
+                    item.setWagerId(row.getWagerId());
+                    item.setEventId(row.getEventId());
+                    item.setEventLoungeId(row.getEventLoungeId());
+                    item.setLoungeId(row.getLoungeId());
+                    item.setLoungeName(row.getLoungeName());
+                    item.setTimeCreated(row.getTimeCreated());
+                    return item;
+                })
+                .collect(Collectors.groupingBy(WagerEnteredEventLounge::getWagerId));
+    }
+
     private Wager toApiModelWithCards(WagerEntity wagerEntity) {
+        return toApiModelWithCards(wagerEntity, List.of());
+    }
+
+    private Wager toApiModelWithCards(
+            WagerEntity wagerEntity,
+            List<WagerEnteredEventLounge> enteredLounges
+    ) {
         Wager api = toApiModel(wagerEntity);
 
         List<WagerCardEntity> cardEntities = wagerCardRepo.findByWager_Id(wagerEntity.getId());
@@ -600,6 +731,7 @@ public class WagerService {
                 .toList();
 
         api.setWagerCards(cards);
+        api.setEnteredEventLounges(enteredLounges != null ? enteredLounges : List.of());
 
         return api;
     }
@@ -619,6 +751,7 @@ public class WagerService {
                         : null
         );
 
+        api.setCustomizationStatus(Wager.CustomizationStatusEnum.valueOf(w.getCustomizationStatus()));
         api.setStakeTokens(w.getStakeTokens());
         api.setPayoutTokens(w.getPayoutTokens());
         api.setOutcome(w.getOutcome() != null ? w.getOutcome().name() : null);
@@ -650,6 +783,7 @@ public class WagerService {
         );
 
         api.setWagerCardStatus(resolveWagerCardStatus(wagerCardEntity));
+        api.setCustomizationStatus(WagerCard.CustomizationStatusEnum.valueOf(wagerCardEntity.getCustomizationStatus()));
 
         List<WagerCardBindingEntity> bindingEntities =
                 wagerCardBindingRepo.findByWagerCard_Id(wagerCardEntity.getId());
@@ -703,9 +837,6 @@ public class WagerService {
                         : null
         );
 
-        /*
-         * Requires OpenAPI regen with bindingValueId in WagerCardBinding.
-         */
         api.setBindingValueId(
                 bindingEntity.getBindingValue() != null
                         ? bindingEntity.getBindingValue().getId()
@@ -749,14 +880,14 @@ public class WagerService {
 
     private String resolveWagerCardStatus(WagerCardEntity wagerCardEntity) {
         if (wagerCardEntity == null) {
-            return "In Play";
+            return CARD_STATUS_IN_PLAY;
         }
 
         if (wagerCardEntity.getStatus() != null && !wagerCardEntity.getStatus().isBlank()) {
             return wagerCardEntity.getStatus();
         }
 
-        return "In Play";
+        return CARD_STATUS_IN_PLAY;
     }
 
     private String resolveBindingValue(WagerCardBindingEntity bindingEntity) {

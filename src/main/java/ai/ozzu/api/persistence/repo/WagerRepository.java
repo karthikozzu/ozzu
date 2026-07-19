@@ -31,7 +31,18 @@ public interface WagerRepository extends JpaRepository<WagerEntity, UUID> {
 
     List<WagerEntity> findByEventId(UUID eventId);
 
-    List<WagerEntity> findByDomainIdAndStatusOrderByCreatedAtDesc(UUID domainId, WagerStatus status);
+    List<WagerEntity> findByDomainId(UUID domainId);
+
+    List<WagerEntity> findByDomainIdAndStatusOrderByCreatedAtDesc(
+            UUID domainId,
+            WagerStatus status
+    );
+
+    Optional<WagerEntity> findByEventIdAndId(UUID eventId, UUID id);
+
+    Optional<WagerEntity> findByUserIdAndEventId(UUID userId, UUID eventId);
+
+    boolean existsByUserIdAndEventId(UUID userId, UUID eventId);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("""
@@ -45,13 +56,14 @@ public interface WagerRepository extends JpaRepository<WagerEntity, UUID> {
             @Param("wagerId") UUID wagerId
     );
 
-    List<WagerEntity> findByDomainId(UUID domainId);
-
     @Query("""
-            select w from WagerEntity w
+            select w
+            from WagerEntity w
             where w.domainId = :domainId
-              and (w.createdAt < :cursorTime
-                   or (w.createdAt = :cursorTime and w.id < :cursorId))
+              and (
+                    w.createdAt < :cursorTime
+                    or (w.createdAt = :cursorTime and w.id < :cursorId)
+                  )
             order by w.createdAt desc, w.id desc
             """)
     List<WagerEntity> findByDomainIdAfterCursor(
@@ -62,11 +74,14 @@ public interface WagerRepository extends JpaRepository<WagerEntity, UUID> {
     );
 
     @Query("""
-            select w from WagerEntity w
+            select w
+            from WagerEntity w
             where w.domainId = :domainId
               and w.userId = :userId
-              and (w.createdAt < :cursorTime
-                   or (w.createdAt = :cursorTime and w.id < :cursorId))
+              and (
+                    w.createdAt < :cursorTime
+                    or (w.createdAt = :cursorTime and w.id < :cursorId)
+                  )
             order by w.createdAt desc, w.id desc
             """)
     List<WagerEntity> findByDomainIdAndUserIdAfterCursor(
@@ -77,7 +92,10 @@ public interface WagerRepository extends JpaRepository<WagerEntity, UUID> {
             Pageable pageable
     );
 
-    List<WagerEntity> findByDomainIdOrderByCreatedAtDesc(UUID domainId, Pageable pageable);
+    List<WagerEntity> findByDomainIdOrderByCreatedAtDesc(
+            UUID domainId,
+            Pageable pageable
+    );
 
     List<WagerEntity> findByDomainIdAndUserIdOrderByCreatedAtDesc(
             UUID domainId,
@@ -92,7 +110,9 @@ public interface WagerRepository extends JpaRepository<WagerEntity, UUID> {
               and w.isCelebrity = true
             order by w.createdAt desc
             """)
-    List<WagerEntity> findCelebrityWagersByEventId(@Param("eventId") UUID eventId);
+    List<WagerEntity> findCelebrityWagersByEventId(
+            @Param("eventId") UUID eventId
+    );
 
     @Query("""
             select new map(
@@ -107,11 +127,6 @@ public interface WagerRepository extends JpaRepository<WagerEntity, UUID> {
             @Param("placed") WagerStatus placed
     );
 
-    /*
-     * IMPORTANT:
-     * Do NOT return Map<UUID, Long> directly from aggregate query.
-     * Spring Data JPA returns TupleBackedMap internally, causing UUID/String cast issues.
-     */
     @Query("""
             select w.eventId as eventId,
                    count(distinct w.userId) as usersCount
@@ -119,7 +134,9 @@ public interface WagerRepository extends JpaRepository<WagerEntity, UUID> {
             where w.eventId in :eventIds
             group by w.eventId
             """)
-    List<EventUserCountRow> countUsersBulkRows(@Param("eventIds") List<UUID> eventIds);
+    List<EventUserCountRow> countUsersBulkRows(
+            @Param("eventIds") List<UUID> eventIds
+    );
 
     @Query("""
             select w.eventId as eventId,
@@ -128,7 +145,9 @@ public interface WagerRepository extends JpaRepository<WagerEntity, UUID> {
             where w.eventId in :eventIds
             group by w.eventId
             """)
-    List<EventPotRow> sumPotBulkRows(@Param("eventIds") List<UUID> eventIds);
+    List<EventPotRow> sumPotBulkRows(
+            @Param("eventIds") List<UUID> eventIds
+    );
 
     @Query("""
             select w
@@ -141,8 +160,6 @@ public interface WagerRepository extends JpaRepository<WagerEntity, UUID> {
             @Param("eventIds") List<UUID> eventIds
     );
 
-    Optional<WagerEntity> findByEventIdAndId(UUID eventId, UUID id);
-
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("""
             select w
@@ -154,6 +171,4 @@ public interface WagerRepository extends JpaRepository<WagerEntity, UUID> {
             @Param("eventId") UUID eventId,
             @Param("status") WagerStatus status
     );
-
-    boolean existsByUserIdAndEventId(UUID userId, UUID eventId);
 }

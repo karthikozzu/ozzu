@@ -89,12 +89,23 @@ public class WagerCardEntity {
         }
     }
 
+    @Column(name = "customization_status", nullable = false)
+    private String customizationStatus = "INCOMPLETE";
+
     @PreUpdate
     public void preUpdate() {
         updatedAt = OffsetDateTime.now();
 
         if (internalProperties == null || internalProperties.isBlank()) {
             internalProperties = "{}";
+        }
+
+        if (customizationStatus == null || customizationStatus.isBlank()) {
+            customizationStatus = "INCOMPLETE";
+        }
+
+        if (status == null || status.isBlank()) {
+            status = "In Play";
         }
     }
 
@@ -162,5 +173,13 @@ public class WagerCardEntity {
 
         this.evaluateCardExpression = evaluateCardExpression;
 
+    }
+
+    public String getCustomizationStatus() {
+        return customizationStatus;
+    }
+
+    public void setCustomizationStatus(String customizationStatus) {
+        this.customizationStatus = customizationStatus;
     }
 }

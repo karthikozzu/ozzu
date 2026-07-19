@@ -1637,5 +1637,29 @@ ALTER TYPE token_txn_type ADD VALUE IF NOT EXISTS 'DEBIT_STAKE';
 ALTER TYPE token_txn_type ADD VALUE IF NOT EXISTS 'CREDIT_PAYOUT';
 ALTER TYPE token_txn_type ADD VALUE IF NOT EXISTS 'REFUND_VOID';
 
-CREATE UNIQUE INDEX IF NOT EXISTS ux_wagers_user_event
-    ON wagers(user_id, event_id);
+DROP INDEX IF EXISTS ux_wagers_user_event;
+
+DO $$
+    BEGIN
+        IF NOT EXISTS (
+            SELECT 1
+            FROM pg_constraint
+            WHERE conname = 'uk_wagers_user_event'
+        ) THEN
+            ALTER TABLE wagers
+                ADD CONSTRAINT uk_wagers_user_event
+                    UNIQUE (user_id, event_id);
+        END IF;
+    END $$;
+
+ALTER TABLE wagers
+    ADD COLUMN IF NOT EXISTS customization_status text NOT NULL DEFAULT 'INCOMPLETE';
+
+ALTER TABLE wager_cards
+    ADD COLUMN IF NOT EXISTS customization_status text NOT NULL DEFAULT 'INCOMPLETE';
+
+ALTER TABLE wager_cards
+    ADD COLUMN IF NOT EXISTS evaluate_card_expression text;
+
+ALTER TABLE wager_cards
+    ADD COLUMN IF NOT EXISTS status text NOT NULL DEFAULT 'In Play';

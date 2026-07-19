@@ -28,6 +28,8 @@ import java.util.UUID;
 @Service
 public class WagerSettlementService {
 
+    private static final String CUSTOMIZATION_COMPLETE = "COMPLETE";
+
     private final WagerRepository wagerRepo;
     private final WagerCardRepository wagerCardRepo;
     private final WagerCardBindingRepository wagerCardBindingRepo;
@@ -54,11 +56,6 @@ public class WagerSettlementService {
         this.tokenLedgerService = tokenLedgerService;
     }
 
-    /**
-     * Main settlement method.
-     *
-     * Called from EventStatusService when event status becomes COMPLETED.
-     */
     @Transactional
     public int settleEvent(UUID eventId, UUID actorUserId) {
         EventScoreEntity finalScore = eventScoreRepo
@@ -75,8 +72,11 @@ public class WagerSettlementService {
         int settledCount = 0;
 
         for (WagerEntity wager : lockedWagers) {
-            SettlementDecision decision = evaluateWager(wager, scoreJson);
+            if (!CUSTOMIZATION_COMPLETE.equalsIgnoreCase(wager.getCustomizationStatus())) {
+                continue;
+            }
 
+            SettlementDecision decision = evaluateWager(wager, scoreJson);
             boolean settled = settleSingleWager(wager, decision, actorUserId);
 
             if (settled) {
@@ -409,13 +409,6 @@ public class WagerSettlementService {
         return BigDecimal.valueOf(2.0);
     }
 
-    /**
-     * Priority:
-     * 1. value column
-     * 2. binding_value_id -> concept_terms.name
-     * 3. pickPayload.selectedValue
-     * 4. pickPayload.value
-     */
     private String selectedValue(WagerCardBindingEntity binding) {
         if (binding.getValue() != null && !binding.getValue().isBlank()) {
             return binding.getValue();

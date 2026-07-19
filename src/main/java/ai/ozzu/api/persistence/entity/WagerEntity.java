@@ -74,6 +74,17 @@ public class WagerEntity {
     @Column(name = "created_at", nullable = false)
     private OffsetDateTime createdAt;
 
+    @Column(name = "customization_status", nullable = false)
+    private String customizationStatus = "INCOMPLETE";
+
+    public String getCustomizationStatus() {
+        return customizationStatus;
+    }
+
+    public void setCustomizationStatus(String customizationStatus) {
+        this.customizationStatus = customizationStatus;
+    }
+
     /**
      * IMPORTANT:
      * Do not use @Version on updatedAt.
@@ -104,6 +115,10 @@ public class WagerEntity {
 
         if (this.internalProperties == null || this.internalProperties.isBlank()) {
             this.internalProperties = "{}";
+        }
+
+        if (customizationStatus == null || customizationStatus.isBlank()) {
+            customizationStatus = "INCOMPLETE";
         }
     }
 
