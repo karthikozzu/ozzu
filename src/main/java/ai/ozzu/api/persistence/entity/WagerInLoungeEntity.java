@@ -34,4 +34,32 @@ public class WagerInLoungeEntity {
 
     @Column(name="created_at", nullable=false, updatable=false)
     private OffsetDateTime createdAt = OffsetDateTime.now();
+
+    public EventLoungeEntity getEventLounge() {
+        return eventLounge;
+    }
+
+    public void setEventLounge(EventLoungeEntity eventLounge) {
+        this.eventLounge = eventLounge;
+    }
+
+    public WagerEntity getWager() {
+        return wager;
+    }
+
+    public void setWager(WagerEntity wager) {
+        this.wager = wager;
+    }
+
+    public OffsetDateTime getCreatedAt() {
+        return createdAt;
+    }
+
+    public void setCreatedAt(OffsetDateTime createdAt) {
+        this.createdAt = createdAt;
+    }
+
+    public UUID getId() {
+        return id;
+    }
 }

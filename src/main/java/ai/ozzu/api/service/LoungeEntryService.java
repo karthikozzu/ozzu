@@ -7,9 +7,13 @@ import ai.ozzu.api.generated.model.LoungeEntryCreateRequest;
 import ai.ozzu.api.persistence.entity.EventLoungeEntity;
 import ai.ozzu.api.persistence.entity.LoungeEntryEntity;
 import ai.ozzu.api.persistence.entity.UserEntity;
+import ai.ozzu.api.persistence.entity.WagerEntity;
+import ai.ozzu.api.persistence.entity.WagerInLoungeEntity;
 import ai.ozzu.api.persistence.repo.EventLoungeRepository;
 import ai.ozzu.api.persistence.repo.LoungeEntryRepository;
 import ai.ozzu.api.persistence.repo.UserRepository;
+import ai.ozzu.api.persistence.repo.WagerInLoungeRepository;
+import ai.ozzu.api.persistence.repo.WagerRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -21,6 +25,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -31,28 +36,39 @@ public class LoungeEntryService {
 
     private final EventLoungeRepository eventLoungeRepository;
     private final LoungeEntryRepository loungeEntryRepository;
+
     private final UserRepository userRepository;
+    private final WagerRepository wagerRepository;
+    private final WagerInLoungeRepository wagerInLoungeRepository;
 
     public LoungeEntryService(
             EventLoungeRepository eventLoungeRepository,
             LoungeEntryRepository loungeEntryRepository,
-            UserRepository userRepository
+            UserRepository userRepository,
+            WagerRepository wagerRepository,
+            WagerInLoungeRepository wagerInLoungeRepository
     ) {
         this.eventLoungeRepository = eventLoungeRepository;
         this.loungeEntryRepository = loungeEntryRepository;
         this.userRepository = userRepository;
+        this.wagerRepository = wagerRepository;
+        this.wagerInLoungeRepository = wagerInLoungeRepository;
     }
 
     @Transactional
-    public LoungeEntry createEntry(UUID domainId, UUID eventId, UUID eventLoungeId, UUID userId, LoungeEntryCreateRequest req) {
+    public LoungeEntry createEntry(
+            UUID domainId,
+            UUID eventId,
+            UUID eventLoungeId,
+            UUID userId,
+            LoungeEntryCreateRequest req
+    ) {
         log.info("loungeEntry.create.start domainId={} eventId={} eventLoungeId={} userId={} wagerIdPresent={}",
                 domainId, eventId, eventLoungeId, userId, (req != null && req.getWagerId() != null));
 
-        // Ensure user exists
         UserEntity user = userRepository.findById(userId)
                 .orElseThrow(() -> new EntityNotFoundException("User not found: " + userId));
 
-        // Ensure event lounge exists and is in (domain,event)
         EventLoungeEntity eventLounge = eventLoungeRepository
                 .findByIdAndDomain_IdAndEvent_Id(eventLoungeId, domainId, eventId)
                 .orElseThrow(() -> new EntityNotFoundException(
@@ -63,13 +79,23 @@ public class LoungeEntryService {
             throw new IllegalStateException("Event lounge is not active: " + eventLoungeId);
         }
 
-        // Idempotent behavior: if already entered, return existing
-        return loungeEntryRepository.findByEventLounge_IdAndUser_Id(eventLoungeId, userId)
-                .map(existing -> {
-                    log.info("loungeEntry.create.idempotentHit eventLoungeId={} userId={} loungeEntryId={}",
-                            eventLoungeId, userId, existing.getId());
-                    return toApi(existing, req);
-                })
+        WagerEntity wager = null;
+
+        if (req != null && req.getWagerId() != null) {
+            wager = wagerRepository.findByEventIdAndId(eventId, req.getWagerId())
+                    .orElseThrow(() -> new EntityNotFoundException("Wager not found: " + req.getWagerId()));
+
+            if (wager.getDomainId() == null || !domainId.equals(wager.getDomainId())) {
+                throw new BadRequestException("Wager does not belong to domain: " + domainId);
+            }
+
+            if (wager.getUserId() == null || !userId.equals(wager.getUserId())) {
+                throw new BadRequestException("Wager does not belong to current user");
+            }
+        }
+
+        LoungeEntryEntity loungeEntry = loungeEntryRepository
+                .findByEventLounge_IdAndUser_Id(eventLoungeId, userId)
                 .orElseGet(() -> {
                     LoungeEntryEntity e = new LoungeEntryEntity();
                     e.setEventLounge(eventLounge);
@@ -80,17 +106,63 @@ public class LoungeEntryService {
                         LoungeEntryEntity saved = loungeEntryRepository.save(e);
                         log.info("loungeEntry.create.success domainId={} eventId={} eventLoungeId={} userId={} loungeEntryId={}",
                                 domainId, eventId, eventLoungeId, userId, saved.getId());
-                        return toApi(saved, req);
+                        return saved;
                     } catch (DataIntegrityViolationException dup) {
-                        // Race-condition safe: unique constraint (event_lounge_id, user_id)
-                        LoungeEntryEntity existing = loungeEntryRepository
+                        return loungeEntryRepository
                                 .findByEventLounge_IdAndUser_Id(eventLoungeId, userId)
                                 .orElseThrow(() -> dup);
-                        log.info("loungeEntry.create.raceDuplicateResolved eventLoungeId={} userId={} loungeEntryId={}",
-                                eventLoungeId, userId, existing.getId());
-                        return toApi(existing, req);
                     }
                 });
+
+        if (wager != null) {
+            createWagerInLoungeIfMissing(eventLounge, wager);
+        }
+
+        return toApi(loungeEntry, wager != null ? wager.getId() : null);
+    }
+
+    private void createWagerInLoungeIfMissing(
+            EventLoungeEntity eventLounge,
+            WagerEntity wager
+    ) {
+        wagerInLoungeRepository
+                .findByEventLounge_IdAndWager_Id(eventLounge.getId(), wager.getId())
+                .ifPresentOrElse(
+                        existing -> log.info(
+                                "wagerInLounge.create.idempotentHit eventLoungeId={} wagerId={} wagerInLoungeId={}",
+                                eventLounge.getId(), wager.getId(), existing.getId()
+                        ),
+                        () -> {
+                            WagerInLoungeEntity wil = new WagerInLoungeEntity();
+                            wil.setEventLounge(eventLounge);
+                            wil.setWager(wager);
+                            wil.setCreatedAt(OffsetDateTime.now());
+                            WagerInLoungeEntity saved = wagerInLoungeRepository.save(wil);
+
+                            log.info(
+                                    "wagerInLounge.create.success eventLoungeId={} wagerId={} wagerInLoungeId={}",
+                                    eventLounge.getId(), wager.getId(), saved.getId()
+                            );
+                        }
+                );
+    }
+
+    private LoungeEntry toApi(LoungeEntryEntity e, UUID wagerId) {
+        LoungeEntry api = new LoungeEntry();
+
+        api.setId(e.getId());
+        api.setEventLoungeId(e.getEventLounge() != null ? e.getEventLounge().getId() : null);
+        api.setUserId(e.getUser() != null ? e.getUser().getId() : null);
+        api.setWagerId(wagerId);
+        api.setTimeCreated(e.getJoinedAt());
+
+        Map<String, Object> ip = new LinkedHashMap<>();
+        if (wagerId != null) {
+            ip.put("wagerId", wagerId.toString());
+        }
+        api.setInternalProperties(ip);
+
+        return api;
     }
 
     private LoungeEntry toApi(LoungeEntryEntity e, LoungeEntryCreateRequest req) {
@@ -117,36 +189,38 @@ public class LoungeEntryService {
         return api;
     }
 
-    public List<LoungeEntry> getLoungeEntries(UUID domainId, UUID eventId, UUID eventLoungeId, UUID userId) {
-        log.info("Fetching lounge entries for userId={}, eventLoungeId={}, eventId={} ", userId, eventLoungeId, eventId);
-        List<LoungeEntryEntity> loungeEntries;
-        Optional<EventLoungeEntity> eventLoungeEntity = eventLoungeRepository.findByIdAndDomain_IdAndEvent_Id
-                (eventLoungeId, domainId, eventId);
-        try {
-            if(eventLoungeEntity.isPresent()) {
-                EventLoungeEntity eventLounge = eventLoungeEntity.get();
-                loungeEntries = loungeEntryRepository.findAllByEventLounge_IdAndUser_Id(eventLounge.getId(), userId);
-            }
-            else {
-                log.error("Event Lounge Not Found:"+ eventLoungeId.toString());
-                throw new EntityNotFoundException("Event Lounge Not Found:"+ eventLoungeId);
-            }
+    @Transactional(readOnly = true)
+    public List<LoungeEntry> getLoungeEntries(
+            UUID domainId,
+            UUID eventId,
+            UUID eventLoungeId,
+            UUID userId
+    ) {
+        log.info("loungeEntry.get.start userId={} eventLoungeId={} eventId={} domainId={}",
+                userId, eventLoungeId, eventId, domainId);
+
+        EventLoungeEntity eventLounge = eventLoungeRepository
+                .findByIdAndDomain_IdAndEvent_Id(eventLoungeId, domainId, eventId)
+                .orElseThrow(() -> new EntityNotFoundException("Event Lounge Not Found: " + eventLoungeId));
+
+        List<LoungeEntryEntity> loungeEntries =
+                loungeEntryRepository.findAllByEventLounge_IdAndUser_Id(eventLounge.getId(), userId);
+
+        List<WagerInLoungeEntity> wagerInLounges =
+                wagerInLoungeRepository.findByEventLounge_IdAndWager_UserId(eventLounge.getId(), userId);
+
+        UUID wagerId = wagerInLounges.stream()
+                .map(WagerInLoungeEntity::getWager)
+                .filter(Objects::nonNull)
+                .map(WagerEntity::getId)
+                .findFirst()
+                .orElse(null);
+
+        List<LoungeEntry> response = new ArrayList<>();
+
+        for (LoungeEntryEntity loungeEntryEntity : loungeEntries) {
+            response.add(toApi(loungeEntryEntity, wagerId));
         }
-        catch (Exception e) {
-            log.error("Exception while lounge entries for userid={}, eventLounge={}", userId, eventLoungeId);
-            throw new BadRequestException("Error while fetching Lounge Entries: " + eventLoungeId);
-        }
-        List<LoungeEntry> loungeEntryList = new ArrayList<>();
-        for(LoungeEntryEntity loungeEntryEntity : loungeEntries) {
-            LoungeEntry loungeEntry = new LoungeEntry();
-            loungeEntry.setEventLoungeId(loungeEntryEntity.getEventLounge().getId());
-            loungeEntry.setId(loungeEntryEntity.getId());
-            loungeEntry.setUserId(userId);
-            loungeEntry.setInternalProperties(loungeEntry.getInternalProperties());
-            loungeEntry.setWagerId(loungeEntry.getWagerId());
-            loungeEntry.setTimeCreated(loungeEntry.getTimeCreated());
-            loungeEntryList.add(loungeEntry);
-        }
-        return loungeEntryList;
+        return response;
     }
 }

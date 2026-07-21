@@ -7,6 +7,7 @@ import org.springframework.data.repository.query.Param;
 
 import java.time.OffsetDateTime;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 public interface WagerInLoungeRepository extends JpaRepository<WagerInLoungeEntity, UUID> {
@@ -14,6 +15,19 @@ public interface WagerInLoungeRepository extends JpaRepository<WagerInLoungeEnti
   List<WagerInLoungeEntity> findByEventLounge_Id(UUID eventLoungeId);
 
   List<WagerInLoungeEntity> findByWager_Id(UUID wagerId);
+
+  Optional<WagerInLoungeEntity> findByEventLounge_IdAndWager_Id(
+
+          UUID eventLoungeId,
+
+          UUID wagerId
+
+  );
+
+  List<WagerInLoungeEntity> findByEventLounge_IdAndWager_UserId(
+          UUID eventLoungeId,
+          UUID userId
+  );
 
   interface WagerEnteredEventLoungeRow {
     UUID getWagerId();
