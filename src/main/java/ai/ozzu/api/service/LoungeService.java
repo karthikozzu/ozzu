@@ -63,27 +63,39 @@ public class LoungeService {
 
     @Transactional(readOnly = true)
     public List<Lounge> listMyLounges(UUID domainId, UUID userId) {
+
         log.info("lounges.listMyLounges domainId={} userId={}", domainId, userId);
 
         ensureDomainExists(domainId);
+
         ensureUserExists(userId);
 
-        // "My lounges" = lounges where membership status is INVITED or JOINED (you can tweak)
         List<LoungeMembershipEntity> memberships =
-                loungeMembershipRepository.findByUser_IdAndLounge_Domain_IdAndStatusIn(
+
+                loungeMembershipRepository.findMyLoungesByStatuses(
+
                         userId,
+
                         domainId,
-                        List.of(LoungeMemberStatus.INVITED, LoungeMemberStatus.ACTIVE)
+
+                        LoungeMemberStatus.INVITED.name(),
+
+                        LoungeMemberStatus.ACTIVE.name()
+
                 );
 
         List<Lounge> result = memberships.stream()
+
                 .map(m -> toApi(m.getLounge()))
+
                 .toList();
 
         log.info("lounges.listMyLounges.result domainId={} userId={} count={}",
+
                 domainId, userId, result.size());
 
         return result;
+
     }
 
     @Transactional

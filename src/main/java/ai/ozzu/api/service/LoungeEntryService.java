@@ -203,24 +203,52 @@ public class LoungeEntryService {
                 .findByIdAndDomain_IdAndEvent_Id(eventLoungeId, domainId, eventId)
                 .orElseThrow(() -> new EntityNotFoundException("Event Lounge Not Found: " + eventLoungeId));
 
-        List<LoungeEntryEntity> loungeEntries =
-                loungeEntryRepository.findAllByEventLounge_IdAndUser_Id(eventLounge.getId(), userId);
+        List<LoungeEntryEntity> loungeEntries;
+        List<WagerInLoungeEntity> wagerInLounges;
 
-        List<WagerInLoungeEntity> wagerInLounges =
-                wagerInLoungeRepository.findByEventLounge_IdAndWager_UserId(eventLounge.getId(), userId);
+        if (userId != null) {
+            loungeEntries = loungeEntryRepository
+                    .findAllByEventLounge_IdAndUser_Id(eventLounge.getId(), userId);
 
-        UUID wagerId = wagerInLounges.stream()
-                .map(WagerInLoungeEntity::getWager)
-                .filter(Objects::nonNull)
-                .map(WagerEntity::getId)
-                .findFirst()
-                .orElse(null);
+            wagerInLounges = wagerInLoungeRepository
+                    .findByEventLounge_IdAndWager_UserId(eventLounge.getId(), userId);
+        } else {
+            loungeEntries = loungeEntryRepository
+                    .findAllByEventLounge_Id(eventLounge.getId());
+
+            wagerInLounges = wagerInLoungeRepository
+                    .findByEventLounge_Id(eventLounge.getId());
+        }
+
+        Map<UUID, UUID> wagerIdByUserId = new LinkedHashMap<>();
+
+        for (WagerInLoungeEntity wil : wagerInLounges) {
+            if (wil.getWager() == null) {
+                continue;
+            }
+
+            UUID wagerUserId = wil.getWager().getUserId();
+            UUID wagerId = wil.getWager().getId();
+
+            if (wagerUserId != null && wagerId != null) {
+                wagerIdByUserId.putIfAbsent(wagerUserId, wagerId);
+            }
+        }
 
         List<LoungeEntry> response = new ArrayList<>();
 
         for (LoungeEntryEntity loungeEntryEntity : loungeEntries) {
+            UUID entryUserId = loungeEntryEntity.getUser() != null
+                    ? loungeEntryEntity.getUser().getId()
+                    : null;
+
+            UUID wagerId = entryUserId != null
+                    ? wagerIdByUserId.get(entryUserId)
+                    : null;
+
             response.add(toApi(loungeEntryEntity, wagerId));
         }
+
         return response;
     }
 }
