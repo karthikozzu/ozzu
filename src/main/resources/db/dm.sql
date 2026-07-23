@@ -1663,3 +1663,16 @@ ALTER TABLE wager_cards
 
 ALTER TABLE wager_cards
     ADD COLUMN IF NOT EXISTS status text NOT NULL DEFAULT 'In Play';
+
+DO $$
+    BEGIN
+        IF NOT EXISTS (
+            SELECT 1
+            FROM pg_constraint
+            WHERE conname = 'uk_wager_in_lounge_event_lounge_wager'
+        ) THEN
+            ALTER TABLE wager_in_lounge
+                ADD CONSTRAINT uk_wager_in_lounge_event_lounge_wager
+                    UNIQUE (event_lounge_id, wager_id);
+        END IF;
+    END $$;

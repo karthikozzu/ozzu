@@ -16,4 +16,9 @@ public interface LoungeEntryRepository extends JpaRepository<LoungeEntryEntity, 
   List<LoungeEntryEntity> findAllByEventLounge_IdAndUser_Id(UUID eventLoungeId, UUID userId);
 
   List<LoungeEntryEntity> findAllByEventLounge_Id(UUID eventLoungeId);
+
+  List<LoungeEntryEntity> findAllByUser_IdAndEventLounge_Event_Id(
+          UUID userId,
+          UUID eventId
+  );
 }

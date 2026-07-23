@@ -12,6 +12,7 @@ import ai.ozzu.api.generated.model.WagerEnteredEventLounge;
 import ai.ozzu.api.persistence.entity.ConceptTermEntity;
 import ai.ozzu.api.persistence.entity.DomainEntity;
 import ai.ozzu.api.persistence.entity.EventEntity;
+import ai.ozzu.api.persistence.entity.LoungeEntryEntity;
 import ai.ozzu.api.persistence.entity.PlayerEntity;
 import ai.ozzu.api.persistence.entity.ScopedReferentEntity;
 import ai.ozzu.api.persistence.entity.TeamEntity;
@@ -21,11 +22,13 @@ import ai.ozzu.api.persistence.entity.WagerCardEntity;
 import ai.ozzu.api.persistence.entity.WagerCardTypeBindingEntity;
 import ai.ozzu.api.persistence.entity.WagerCardTypeEntity;
 import ai.ozzu.api.persistence.entity.WagerEntity;
+import ai.ozzu.api.persistence.entity.WagerInLoungeEntity;
 import ai.ozzu.api.persistence.enums.EventStatus;
 import ai.ozzu.api.persistence.enums.WagerStatus;
 import ai.ozzu.api.persistence.repo.ConceptTermRepository;
 import ai.ozzu.api.persistence.repo.DomainRepository;
 import ai.ozzu.api.persistence.repo.EventRepository;
+import ai.ozzu.api.persistence.repo.LoungeEntryRepository;
 import ai.ozzu.api.persistence.repo.PlayerRepository;
 import ai.ozzu.api.persistence.repo.ScopedReferentRepository;
 import ai.ozzu.api.persistence.repo.TeamRepository;
@@ -83,6 +86,7 @@ public class WagerService {
     private final TokenLedgerService tokenLedgerService;
     private final ObjectMapper objectMapper;
     private final WagerInLoungeRepository wagerInLoungeRepo;
+    private final LoungeEntryRepository loungeEntryRepository;
 
     public WagerService(
             EventRepository eventRepo,
@@ -99,7 +103,8 @@ public class WagerService {
             DomainRepository domainRepo,
             TokenLedgerService tokenLedgerService,
             ObjectMapper objectMapper,
-            WagerInLoungeRepository wagerInLoungeRepo
+            WagerInLoungeRepository wagerInLoungeRepo,
+            LoungeEntryRepository loungeEntryRepository
     ) {
         this.eventRepo = eventRepo;
         this.wagerRepo = wagerRepo;
@@ -116,6 +121,7 @@ public class WagerService {
         this.tokenLedgerService = tokenLedgerService;
         this.objectMapper = objectMapper;
         this.wagerInLoungeRepo = wagerInLoungeRepo;
+        this.loungeEntryRepository = loungeEntryRepository;
     }
 
     @Transactional
@@ -168,15 +174,25 @@ public class WagerService {
         /*
          * One user + one event = one wager.
          * If existing wager is present and event is still SCHEDULED, override it.
+         *
+         * Current behavior:
+         * - Deletes existing wager.
+         * - Creates fresh wager/cards/bindings.
+         *
+         * Production note:
+         * - If existing wager was already COMPLETE/PLACED and tokens were debited,
+         *   refund/re-debit or block edit should be added.
          */
         wagerRepo.findByUserIdAndEventId(userId, eventId)
                 .ifPresent(existing -> {
                     log.info(
-                            "wager.override.existing domainId={} eventId={} userId={} oldWagerId={}",
+                            "wager.override.existing domainId={} eventId={} userId={} oldWagerId={} oldStatus={} oldCustomizationStatus={}",
                             domainId,
                             eventId,
                             userId,
-                            existing.getId()
+                            existing.getId(),
+                            existing.getStatus(),
+                            existing.getCustomizationStatus()
                     );
 
                     wagerRepo.delete(existing);
@@ -185,6 +201,10 @@ public class WagerService {
 
         int stake = req.getStakeTokens() != null ? req.getStakeTokens() : 0;
         String customizationStatus = resolveCustomizationStatus(req);
+
+        if (CUSTOMIZATION_COMPLETE.equals(customizationStatus) && stake < 0) {
+            throw new BadRequestException("stakeTokens must be greater than or equal to 0");
+        }
 
         WagerEntity wager = new WagerEntity();
         wager.setEventId(eventId);
@@ -221,6 +241,18 @@ public class WagerService {
             wager.setUpdatedAt(OffsetDateTime.now());
             wager = wagerRepo.saveAndFlush(wager);
 
+            /*
+             * Important:
+             * This supports ideal flow:
+             *
+             * 1. POST loungeEntry without wagerId
+             * 2. POST createWager
+             * 3. GET getWagers returns enteredEventLounges
+             *
+             * If lounge_entries do not exist, this method safely returns without error.
+             */
+            linkExistingLoungeEntriesToWager(wager);
+
             log.info(
                     "wager.create.success domainId={} eventId={} wagerId={} userId={} stakeTokens={} customizationStatus={} status={}",
                     domainId,
@@ -247,7 +279,16 @@ public class WagerService {
             throw ex;
         }
 
-        return toApiModelWithCards(wager);
+        /*
+         * Return create response with enteredEventLounges also populated.
+         */
+        Map<UUID, List<WagerEnteredEventLounge>> enteredLoungesByWagerId =
+                loadEnteredLoungesByWagerId(List.of(wager));
+
+        return toApiModelWithCards(
+                wager,
+                enteredLoungesByWagerId.getOrDefault(wager.getId(), List.of())
+        );
     }
 
     private void validateCreateRequest(WagerCreateRequest req) {
@@ -293,7 +334,7 @@ public class WagerService {
 
             /*
              * Partial card allowed:
-             * card selected, but no bindings yet.
+             * Card selected, but no bindings yet.
              */
             if (card.getBindings() == null || card.getBindings().isEmpty()) {
                 continue;
@@ -324,7 +365,41 @@ public class WagerService {
                 if (binding.getBindingValueId() != null && !bindingValueIds.add(binding.getBindingValueId())) {
                     throw new BadRequestException("duplicate bindingValueId is not allowed: " + binding.getBindingValueId());
                 }
+
+                /*
+                 * Also catch duplicate bindingValueId sent inside pickPayload.
+                 */
+                if (binding.getPickPayload() != null) {
+                    Map<String, Object> payload = toMap(binding.getPickPayload());
+                    UUID payloadBindingValueId = resolveBindingValueIdFromPayloadOnly(payload);
+
+                    if (payloadBindingValueId != null && !bindingValueIds.add(payloadBindingValueId)) {
+                        throw new BadRequestException("duplicate bindingValueId is not allowed: " + payloadBindingValueId);
+                    }
+                }
             }
+        }
+    }
+
+    private UUID resolveBindingValueIdFromPayloadOnly(Map<String, Object> payload) {
+        if (payload == null || payload.isEmpty()) {
+            return null;
+        }
+
+        Object selectedConceptTermId = payload.get("selectedConceptTermId");
+
+        if (selectedConceptTermId == null) {
+            selectedConceptTermId = payload.get("bindingValueId");
+        }
+
+        if (selectedConceptTermId == null) {
+            return null;
+        }
+
+        try {
+            return UUID.fromString(selectedConceptTermId.toString());
+        } catch (Exception ex) {
+            throw new BadRequestException("Invalid selectedConceptTermId/bindingValueId in pickPayload");
         }
     }
 
@@ -334,7 +409,7 @@ public class WagerService {
         }
 
         /*
-         * Only exactly 6 fully customized cards should be considered complete.
+         * Only 6 fully customized cards should be considered complete.
          * Anything less should be CREATED / INCOMPLETE and skipped from settlement.
          */
         if (req.getWagerCards().size() < 6) {
@@ -688,8 +763,7 @@ public class WagerService {
             }
 
             return new PageResult<>(wagers, nextCursor, hasMore);
-        }
-        catch (Exception e) {
+        } catch (Exception e) {
             log.error(e.getMessage(), e);
             throw new BadRequestException(e.getMessage());
         }
@@ -705,6 +779,10 @@ public class WagerService {
         List<UUID> wagerIds = wagers.stream()
                 .map(WagerEntity::getId)
                 .toList();
+
+        if (wagerIds.isEmpty()) {
+            return Map.of();
+        }
 
         return wagerInLoungeRepo.findEnteredLoungesForWagers(wagerIds)
                 .stream()
@@ -723,6 +801,76 @@ public class WagerService {
                     return item;
                 })
                 .collect(Collectors.groupingBy(WagerEnteredEventLounge::getWagerId));
+    }
+
+    private void linkExistingLoungeEntriesToWager(WagerEntity wager) {
+        if (wager == null
+                || wager.getId() == null
+                || wager.getUserId() == null
+                || wager.getEventId() == null) {
+            return;
+        }
+
+        List<LoungeEntryEntity> loungeEntries =
+                loungeEntryRepository.findAllByUser_IdAndEventLounge_Event_Id(
+                        wager.getUserId(),
+                        wager.getEventId()
+                );
+
+        if (loungeEntries == null || loungeEntries.isEmpty()) {
+            log.info(
+                    "wager.loungeEntry.link.none wagerId={} eventId={} userId={}",
+                    wager.getId(),
+                    wager.getEventId(),
+                    wager.getUserId()
+            );
+            return;
+        }
+
+        for (LoungeEntryEntity loungeEntry : loungeEntries) {
+            if (loungeEntry.getEventLounge() == null) {
+                continue;
+            }
+
+            UUID eventLoungeId = loungeEntry.getEventLounge().getId();
+
+            boolean alreadyLinked = wagerInLoungeRepo
+                    .findByEventLounge_IdAndWager_Id(eventLoungeId, wager.getId())
+                    .isPresent();
+
+            if (alreadyLinked) {
+                log.info(
+                        "wager.loungeEntry.link.alreadyExists wagerId={} eventId={} userId={} eventLoungeId={}",
+                        wager.getId(),
+                        wager.getEventId(),
+                        wager.getUserId(),
+                        eventLoungeId
+                );
+                continue;
+            }
+
+            WagerInLoungeEntity wil = new WagerInLoungeEntity();
+            wil.setEventLounge(loungeEntry.getEventLounge());
+            wil.setWager(wager);
+            wil.setCreatedAt(
+                    loungeEntry.getJoinedAt() != null
+                            ? loungeEntry.getJoinedAt()
+                            : OffsetDateTime.now()
+            );
+
+            WagerInLoungeEntity saved = wagerInLoungeRepo.save(wil);
+
+            log.info(
+                    "wager.loungeEntry.linked wagerId={} eventId={} userId={} eventLoungeId={} wagerInLoungeId={}",
+                    wager.getId(),
+                    wager.getEventId(),
+                    wager.getUserId(),
+                    eventLoungeId,
+                    saved.getId()
+            );
+        }
+
+        wagerInLoungeRepo.flush();
     }
 
     private Wager toApiModelWithCards(WagerEntity wagerEntity) {
@@ -762,7 +910,12 @@ public class WagerService {
                         : null
         );
 
-        api.setCustomizationStatus(Wager.CustomizationStatusEnum.valueOf(w.getCustomizationStatus()));
+        api.setCustomizationStatus(
+                w.getCustomizationStatus() != null
+                        ? Wager.CustomizationStatusEnum.valueOf(w.getCustomizationStatus())
+                        : null
+        );
+
         api.setStakeTokens(w.getStakeTokens());
         api.setPayoutTokens(w.getPayoutTokens());
         api.setOutcome(w.getOutcome() != null ? w.getOutcome().name() : null);
@@ -794,7 +947,12 @@ public class WagerService {
         );
 
         api.setWagerCardStatus(resolveWagerCardStatus(wagerCardEntity));
-        api.setCustomizationStatus(WagerCard.CustomizationStatusEnum.valueOf(wagerCardEntity.getCustomizationStatus()));
+
+        api.setCustomizationStatus(
+                wagerCardEntity.getCustomizationStatus() != null
+                        ? WagerCard.CustomizationStatusEnum.valueOf(wagerCardEntity.getCustomizationStatus())
+                        : null
+        );
 
         List<WagerCardBindingEntity> bindingEntities =
                 wagerCardBindingRepo.findByWagerCard_Id(wagerCardEntity.getId());
