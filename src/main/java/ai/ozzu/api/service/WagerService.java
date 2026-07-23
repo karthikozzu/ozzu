@@ -363,7 +363,7 @@ public class WagerService {
                 }
 
                 if (binding.getBindingValueId() != null && !bindingValueIds.add(binding.getBindingValueId())) {
-                    throw new BadRequestException("duplicate bindingValueId is not allowed: " + binding.getBindingValueId());
+                   // throw new BadRequestException("duplicate bindingValueId is not allowed: " + binding.getBindingValueId());
                 }
 
                 /*
