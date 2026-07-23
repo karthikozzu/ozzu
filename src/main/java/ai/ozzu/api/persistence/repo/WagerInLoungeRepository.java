@@ -5,6 +5,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -40,7 +41,7 @@ public interface WagerInLoungeRepository extends JpaRepository<WagerInLoungeEnti
 
     String getLoungeName();
 
-    OffsetDateTime getTimeCreated();
+    Instant getTimeCreated();
   }
 
   @Query(value = """

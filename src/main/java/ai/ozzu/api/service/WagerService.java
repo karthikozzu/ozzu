@@ -49,6 +49,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -626,66 +627,72 @@ public class WagerService {
             String cursor,
             UUID userId
     ) {
-        int effectiveLimit = limit == null || limit <= 0 ? 20 : Math.min(limit, 100);
+        try {
+            int effectiveLimit = limit == null || limit <= 0 ? 20 : Math.min(limit, 100);
 
-        Pageable pageable = PageRequest.of(0, effectiveLimit + 1);
-        List<WagerEntity> entityPage;
+            Pageable pageable = PageRequest.of(0, effectiveLimit + 1);
+            List<WagerEntity> entityPage;
 
-        if (cursor != null && !cursor.isBlank()) {
-            var decoded = CursorHelper.decode(cursor);
+            if (cursor != null && !cursor.isBlank()) {
+                var decoded = CursorHelper.decode(cursor);
 
-            if (userId == null) {
-                entityPage = wagerRepo.findByDomainIdAfterCursor(
-                        domainId,
-                        decoded.getFirst(),
-                        decoded.getSecond(),
-                        pageable
-                );
+                if (userId == null) {
+                    entityPage = wagerRepo.findByDomainIdAfterCursor(
+                            domainId,
+                            decoded.getFirst(),
+                            decoded.getSecond(),
+                            pageable
+                    );
+                } else {
+                    entityPage = wagerRepo.findByDomainIdAndUserIdAfterCursor(
+                            domainId,
+                            userId,
+                            decoded.getFirst(),
+                            decoded.getSecond(),
+                            pageable
+                    );
+                }
             } else {
-                entityPage = wagerRepo.findByDomainIdAndUserIdAfterCursor(
-                        domainId,
-                        userId,
-                        decoded.getFirst(),
-                        decoded.getSecond(),
-                        pageable
-                );
+                if (userId == null) {
+                    entityPage = wagerRepo.findByDomainIdOrderByCreatedAtDesc(domainId, pageable);
+                } else {
+                    entityPage = wagerRepo.findByDomainIdAndUserIdOrderByCreatedAtDesc(
+                            domainId,
+                            userId,
+                            pageable
+                    );
+                }
             }
-        } else {
-            if (userId == null) {
-                entityPage = wagerRepo.findByDomainIdOrderByCreatedAtDesc(domainId, pageable);
-            } else {
-                entityPage = wagerRepo.findByDomainIdAndUserIdOrderByCreatedAtDesc(
-                        domainId,
-                        userId,
-                        pageable
-                );
+
+            boolean hasMore = entityPage.size() > effectiveLimit;
+
+            if (hasMore) {
+                entityPage = entityPage.subList(0, effectiveLimit);
             }
+
+            Map<UUID, List<WagerEnteredEventLounge>> enteredLoungesByWagerId =
+                    loadEnteredLoungesByWagerId(entityPage);
+
+            List<Wager> wagers = entityPage.stream()
+                    .map(wager -> toApiModelWithCards(
+                            wager,
+                            enteredLoungesByWagerId.getOrDefault(wager.getId(), List.of())
+                    ))
+                    .collect(Collectors.toList());
+
+            String nextCursor = null;
+
+            if (hasMore && !entityPage.isEmpty()) {
+                WagerEntity last = entityPage.get(entityPage.size() - 1);
+                nextCursor = CursorHelper.encode(last.getCreatedAt(), last.getId());
+            }
+
+            return new PageResult<>(wagers, nextCursor, hasMore);
         }
-
-        boolean hasMore = entityPage.size() > effectiveLimit;
-
-        if (hasMore) {
-            entityPage = entityPage.subList(0, effectiveLimit);
+        catch (Exception e) {
+            log.error(e.getMessage(), e);
+            throw new BadRequestException(e.getMessage());
         }
-
-        Map<UUID, List<WagerEnteredEventLounge>> enteredLoungesByWagerId =
-                loadEnteredLoungesByWagerId(entityPage);
-
-        List<Wager> wagers = entityPage.stream()
-                .map(wager -> toApiModelWithCards(
-                        wager,
-                        enteredLoungesByWagerId.getOrDefault(wager.getId(), List.of())
-                ))
-                .collect(Collectors.toList());
-
-        String nextCursor = null;
-
-        if (hasMore && !entityPage.isEmpty()) {
-            WagerEntity last = entityPage.get(entityPage.size() - 1);
-            nextCursor = CursorHelper.encode(last.getCreatedAt(), last.getId());
-        }
-
-        return new PageResult<>(wagers, nextCursor, hasMore);
     }
 
     private Map<UUID, List<WagerEnteredEventLounge>> loadEnteredLoungesByWagerId(
@@ -708,7 +715,11 @@ public class WagerService {
                     item.setEventLoungeId(row.getEventLoungeId());
                     item.setLoungeId(row.getLoungeId());
                     item.setLoungeName(row.getLoungeName());
-                    item.setTimeCreated(row.getTimeCreated());
+                    item.setTimeCreated(
+                            row.getTimeCreated() != null
+                                    ? OffsetDateTime.ofInstant(row.getTimeCreated(), ZoneOffset.UTC)
+                                    : null
+                    );
                     return item;
                 })
                 .collect(Collectors.groupingBy(WagerEnteredEventLounge::getWagerId));
