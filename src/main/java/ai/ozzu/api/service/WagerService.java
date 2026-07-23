@@ -374,7 +374,7 @@ public class WagerService {
                     UUID payloadBindingValueId = resolveBindingValueIdFromPayloadOnly(payload);
 
                     if (payloadBindingValueId != null && !bindingValueIds.add(payloadBindingValueId)) {
-                        throw new BadRequestException("duplicate bindingValueId is not allowed: " + payloadBindingValueId);
+                        // throw new BadRequestException("duplicate bindingValueId is not allowed: " + payloadBindingValueId);
                     }
                 }
             }
