@@ -359,7 +359,7 @@ public class WagerService {
                 }
 
                 if (binding.getConceptId() != null && !conceptIds.add(binding.getConceptId())) {
-                    throw new BadRequestException("duplicate conceptId is not allowed: " + binding.getConceptId());
+                    // throw new BadRequestException("duplicate conceptId is not allowed: " + binding.getConceptId());
                 }
 
                 if (binding.getBindingValueId() != null && !bindingValueIds.add(binding.getBindingValueId())) {
