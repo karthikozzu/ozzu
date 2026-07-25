@@ -171,18 +171,6 @@ public class WagerService {
         DomainEntity domain = domainRepo.findById(domainId)
                 .orElseThrow(() -> new IllegalArgumentException("Invalid domainId"));
 
-        /*
-         * One user + one event = one wager.
-         * If existing wager is present and event is still SCHEDULED, override it.
-         *
-         * Current behavior:
-         * - Deletes existing wager.
-         * - Creates fresh wager/cards/bindings.
-         *
-         * Production note:
-         * - If existing wager was already COMPLETE/PLACED and tokens were debited,
-         *   refund/re-debit or block edit should be added.
-         */
         wagerRepo.findByUserIdAndEventId(userId, eventId)
                 .ifPresent(existing -> {
                     log.info(
@@ -241,16 +229,6 @@ public class WagerService {
             wager.setUpdatedAt(OffsetDateTime.now());
             wager = wagerRepo.saveAndFlush(wager);
 
-            /*
-             * Important:
-             * This supports ideal flow:
-             *
-             * 1. POST loungeEntry without wagerId
-             * 2. POST createWager
-             * 3. GET getWagers returns enteredEventLounges
-             *
-             * If lounge_entries do not exist, this method safely returns without error.
-             */
             linkExistingLoungeEntriesToWager(wager);
 
             log.info(
@@ -279,9 +257,6 @@ public class WagerService {
             throw ex;
         }
 
-        /*
-         * Return create response with enteredEventLounges also populated.
-         */
         Map<UUID, List<WagerEnteredEventLounge>> enteredLoungesByWagerId =
                 loadEnteredLoungesByWagerId(List.of(wager));
 
@@ -317,25 +292,23 @@ public class WagerService {
             throw new BadRequestException("maximum 6 wagerCards are allowed: 1 foundation/winner card + 5 custom cards");
         }
 
-        Set<UUID> cardTypeIds = new HashSet<>();
-        Set<UUID> conceptIds = new HashSet<>();
-        Set<UUID> bindingValueIds = new HashSet<>();
+        int foundationCardCount = 0;
+        Set<String> exactPredictionKeys = new HashSet<>();
 
         for (WagerCreateCardRequest card : req.getWagerCards()) {
             if (card == null || card.getWagerCardTypeId() == null) {
                 throw new BadRequestException("wagerCardTypeId is required for every wagerCard");
             }
 
-            if (!cardTypeIds.add(card.getWagerCardTypeId())) {
-                throw new BadRequestException(
-                        "duplicate wagerCardTypeId is not allowed: " + card.getWagerCardTypeId()
-                );
+            WagerCardTypeEntity cardType = wagerCardTypeRepo.findById(card.getWagerCardTypeId())
+                    .orElseThrow(() -> new BadRequestException(
+                            "Invalid wagerCardTypeId: " + card.getWagerCardTypeId()
+                    ));
+
+            if (isFoundationOrWinnerCard(cardType)) {
+                foundationCardCount++;
             }
 
-            /*
-             * Partial card allowed:
-             * Card selected, but no bindings yet.
-             */
             if (card.getBindings() == null || card.getBindings().isEmpty()) {
                 continue;
             }
@@ -350,57 +323,121 @@ public class WagerService {
                                 || binding.getPlayerId() != null
                                 || binding.getTeamId() != null
                                 || binding.getBindingValueId() != null
-                                || (binding.getValue() != null && !binding.getValue().isBlank());
+                                || (binding.getValue() != null && !binding.getValue().isBlank())
+                                || hasValueInPayload(binding.getPickPayload());
 
                 if (!hasPick) {
                     throw new BadRequestException(
-                            "customized binding must include scopedReferentId, playerId, teamId, bindingValueId, or value"
+                            "customized binding must include scopedReferentId, playerId, teamId, bindingValueId, value, or value in pickPayload"
                     );
                 }
 
-                if (binding.getConceptId() != null && !conceptIds.add(binding.getConceptId())) {
-                    // throw new BadRequestException("duplicate conceptId is not allowed: " + binding.getConceptId());
-                }
+                String predictionKey = buildPredictionDuplicateKey(card, binding);
 
-                if (binding.getBindingValueId() != null && !bindingValueIds.add(binding.getBindingValueId())) {
-                   // throw new BadRequestException("duplicate bindingValueId is not allowed: " + binding.getBindingValueId());
-                }
-
-                /*
-                 * Also catch duplicate bindingValueId sent inside pickPayload.
-                 */
-                if (binding.getPickPayload() != null) {
-                    Map<String, Object> payload = toMap(binding.getPickPayload());
-                    UUID payloadBindingValueId = resolveBindingValueIdFromPayloadOnly(payload);
-
-                    if (payloadBindingValueId != null && !bindingValueIds.add(payloadBindingValueId)) {
-                        // throw new BadRequestException("duplicate bindingValueId is not allowed: " + payloadBindingValueId);
-                    }
+                if (!exactPredictionKeys.add(predictionKey)) {
+                    throw new BadRequestException("Duplicate prediction is not allowed");
                 }
             }
         }
+
+        if (foundationCardCount > 1) {
+            throw new BadRequestException("Only one winner/foundation card is allowed");
+        }
     }
 
-    private UUID resolveBindingValueIdFromPayloadOnly(Map<String, Object> payload) {
-        if (payload == null || payload.isEmpty()) {
-            return null;
+    private boolean hasValueInPayload(Object pickPayload) {
+        if (pickPayload == null) {
+            return false;
         }
 
+        Map<String, Object> payload = toMap(pickPayload);
+
+        Object selectedValue = payload.get("selectedValue");
+        Object value = payload.get("value");
         Object selectedConceptTermId = payload.get("selectedConceptTermId");
+        Object bindingValueId = payload.get("bindingValueId");
 
-        if (selectedConceptTermId == null) {
-            selectedConceptTermId = payload.get("bindingValueId");
+        return selectedValue != null
+                || value != null
+                || selectedConceptTermId != null
+                || bindingValueId != null;
+    }
+
+    private String buildPredictionDuplicateKey(
+            WagerCreateCardRequest card,
+            WagerCreateCardBindingRequest binding
+    ) {
+        String actor;
+
+        if (binding.getPlayerId() != null) {
+            actor = "player:" + binding.getPlayerId();
+        } else if (binding.getTeamId() != null) {
+            actor = "team:" + binding.getTeamId();
+        } else if (binding.getScopedReferentId() != null) {
+            actor = "scopedReferent:" + binding.getScopedReferentId();
+        } else {
+            actor = "actor:none";
         }
 
-        if (selectedConceptTermId == null) {
-            return null;
+        String concept = binding.getConceptId() != null
+                ? binding.getConceptId().toString()
+                : "concept:none";
+
+        String selected;
+
+        if (binding.getBindingValueId() != null) {
+            selected = "bindingValue:" + binding.getBindingValueId();
+        } else if (binding.getValue() != null && !binding.getValue().isBlank()) {
+            selected = "value:" + binding.getValue().trim().toLowerCase();
+        } else if (binding.getPickPayload() != null) {
+            Map<String, Object> payload = toMap(binding.getPickPayload());
+
+            Object selectedConceptTermId = payload.get("selectedConceptTermId");
+            Object bindingValueId = payload.get("bindingValueId");
+            Object selectedValue = payload.get("selectedValue");
+            Object value = payload.get("value");
+
+            if (selectedConceptTermId != null) {
+                selected = "bindingValue:" + selectedConceptTermId;
+            } else if (bindingValueId != null) {
+                selected = "bindingValue:" + bindingValueId;
+            } else if (selectedValue != null) {
+                selected = "value:" + selectedValue.toString().trim().toLowerCase();
+            } else if (value != null) {
+                selected = "value:" + value.toString().trim().toLowerCase();
+            } else {
+                selected = "selected:none";
+            }
+        } else {
+            selected = "selected:none";
         }
 
-        try {
-            return UUID.fromString(selectedConceptTermId.toString());
-        } catch (Exception ex) {
-            throw new BadRequestException("Invalid selectedConceptTermId/bindingValueId in pickPayload");
+        return "cardType:" + card.getWagerCardTypeId()
+                + "|concept:" + concept
+                + "|" + actor
+                + "|" + selected;
+    }
+
+    private boolean isFoundationOrWinnerCard(WagerCardTypeEntity cardType) {
+        if (cardType == null) {
+            return false;
         }
+
+        if (Boolean.TRUE.equals(cardType.isFoundation())) {
+            return true;
+        }
+
+        String name = cardType.getName();
+
+        if (name != null) {
+            String lower = name.toLowerCase();
+
+            return lower.contains("winner")
+                    || lower.contains("winning team")
+                    || lower.contains("match winner");
+        }
+
+        return false;
     }
 
     private String resolveCustomizationStatus(WagerCreateRequest req) {
@@ -408,10 +445,6 @@ public class WagerService {
             return CUSTOMIZATION_INCOMPLETE;
         }
 
-        /*
-         * Only 6 fully customized cards should be considered complete.
-         * Anything less should be CREATED / INCOMPLETE and skipped from settlement.
-         */
         if (req.getWagerCards().size() < 6) {
             return CUSTOMIZATION_INCOMPLETE;
         }
@@ -427,7 +460,8 @@ public class WagerService {
                                 || binding.getPlayerId() != null
                                 || binding.getTeamId() != null
                                 || binding.getBindingValueId() != null
-                                || (binding.getValue() != null && !binding.getValue().isBlank());
+                                || (binding.getValue() != null && !binding.getValue().isBlank())
+                                || hasValueInPayload(binding.getPickPayload());
 
                 if (!hasPick) {
                     return CUSTOMIZATION_INCOMPLETE;
@@ -587,14 +621,24 @@ public class WagerService {
         if (bindingValueId != null) {
             ConceptTermEntity bindingValue = conceptTermRepo
                     .findByIdAndDomain_Id(bindingValueId, domainId)
-                    .orElseThrow(() -> new IllegalArgumentException(
-                            "Invalid bindingValueId: " + bindingValueId
-                    ));
+                    .orElse(null);
 
-            binding.setBindingValue(bindingValue);
+            if (bindingValue == null) {
+                log.warn(
+                        "wager.binding.invalidBindingValueId.ignored domainId={} eventId={} wagerId={} bindingValueId={}",
+                        domainId,
+                        eventId,
+                        wager.getId(),
+                        bindingValueId
+                );
 
-            payload.putIfAbsent("selectedConceptTermId", bindingValue.getId().toString());
-            payload.putIfAbsent("selectedValue", bindingValue.getName());
+                payload.remove("selectedConceptTermId");
+                payload.remove("bindingValueId");
+            } else {
+                binding.setBindingValue(bindingValue);
+                payload.putIfAbsent("selectedConceptTermId", bindingValue.getId().toString());
+                payload.putIfAbsent("selectedValue", bindingValue.getName());
+            }
         }
 
         String value = resolveRequestValue(bindingReq, payload, binding);
