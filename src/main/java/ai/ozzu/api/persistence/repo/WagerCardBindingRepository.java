@@ -42,4 +42,6 @@ public interface WagerCardBindingRepository extends JpaRepository<WagerCardBindi
           @Param("wagerId") UUID wagerId
 
   );
+
+  void deleteByWagerCard_Wager_Id(UUID wagerId);
 }

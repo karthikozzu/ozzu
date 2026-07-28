@@ -171,22 +171,6 @@ public class WagerService {
         DomainEntity domain = domainRepo.findById(domainId)
                 .orElseThrow(() -> new IllegalArgumentException("Invalid domainId"));
 
-        wagerRepo.findByUserIdAndEventId(userId, eventId)
-                .ifPresent(existing -> {
-                    log.info(
-                            "wager.override.existing domainId={} eventId={} userId={} oldWagerId={} oldStatus={} oldCustomizationStatus={}",
-                            domainId,
-                            eventId,
-                            userId,
-                            existing.getId(),
-                            existing.getStatus(),
-                            existing.getCustomizationStatus()
-                    );
-
-                    wagerRepo.delete(existing);
-                    wagerRepo.flush();
-                });
-
         int stake = req.getStakeTokens() != null ? req.getStakeTokens() : 0;
         String customizationStatus = resolveCustomizationStatus(req);
 
@@ -194,10 +178,43 @@ public class WagerService {
             throw new BadRequestException("stakeTokens must be greater than or equal to 0");
         }
 
-        WagerEntity wager = new WagerEntity();
-        wager.setEventId(eventId);
-        wager.setDomainId(domainId);
-        wager.setUserId(userId);
+        WagerEntity wager = wagerRepo.findByUserIdAndEventId(userId, eventId)
+                .orElseGet(WagerEntity::new);
+
+        boolean existingWager = wager.getId() != null;
+
+        if (existingWager) {
+            log.info(
+                    "wager.update.existing.keepId domainId={} eventId={} userId={} wagerId={} oldStatus={} oldCustomizationStatus={}",
+                    domainId,
+                    eventId,
+                    userId,
+                    wager.getId(),
+                    wager.getStatus(),
+                    wager.getCustomizationStatus()
+            );
+
+            if (wager.getStatus() == WagerStatus.LOCKED
+                    || wager.getStatus() == WagerStatus.CANCELED
+                    || wager.getStatus() == WagerStatus.SETTLED) {
+                throw new BadRequestException(
+                        "Wager cannot be modified after it is locked or settled. Current status: " + wager.getStatus()
+                );
+            }
+
+            /*
+             * Replace cards/bindings but keep same wager.id.
+             */
+            wagerCardBindingRepo.deleteByWagerCard_Wager_Id(wager.getId());
+            wagerCardRepo.deleteByWager_Id(wager.getId());
+            wagerCardBindingRepo.flush();
+            wagerCardRepo.flush();
+        } else {
+            wager.setEventId(eventId);
+            wager.setDomainId(domainId);
+            wager.setUserId(userId);
+        }
+
         wager.setName(req.getName());
         wager.setStakeTokens(stake);
         wager.setStatus(WagerStatus.CREATED);
