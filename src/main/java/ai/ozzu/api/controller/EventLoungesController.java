@@ -47,6 +47,7 @@ public class EventLoungesController implements EventLoungesApi {
             for(EventLoungeEntity eventLoungeEntity : eventLoungeEntities) {
                 EventLounge eventLounge = new EventLounge();
                 eventLounge.setEventId(eventId);
+                eventLounge.setId(eventLoungeEntity.getId());
                 eventLounge.setDomainId(domainId);
                 eventLounge.setLoungeId(eventLoungeEntity.getLounge().getId());
                 eventLounge.setInternalProperties(eventLoungeEntity.getInternalProperties());

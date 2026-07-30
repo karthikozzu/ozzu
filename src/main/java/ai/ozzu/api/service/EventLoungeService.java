@@ -31,7 +31,7 @@ public class EventLoungeService {
 
     @Transactional(readOnly = true)
     public List<EventLoungeEntity> getEventLounges(UUID domainId, UUID eventId) {
-        EventEntity entity = eventRepository.findByIdAndDomain_Id(eventId, domainId)
+        eventRepository.findByIdAndDomain_Id(eventId, domainId)
                 .orElseThrow(() -> {
                     log.error("getEventLounge: event not found in domain: {} {}", domainId, eventId);
                     return new EntityNotFoundException("getEventLounge: event not found in domain: "+domainId+ " "+
