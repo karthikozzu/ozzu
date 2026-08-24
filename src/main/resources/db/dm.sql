@@ -1676,3 +1676,63 @@ DO $$
                     UNIQUE (event_lounge_id, wager_id);
         END IF;
     END $$;
+
+DO $$
+    BEGIN
+        IF NOT EXISTS (
+            SELECT 1 FROM pg_type WHERE typname = 'notification_type_enum'
+        ) THEN
+            CREATE TYPE notification_type_enum AS ENUM (
+                'UPCOMING_REMINDER',
+                'INCOMPLETE_ACTIVITY_REMINDER'
+                );
+        END IF;
+    END $$;
+
+DO $$
+    BEGIN
+        IF NOT EXISTS (
+            SELECT 1 FROM pg_type WHERE typname = 'notification_status_enum'
+        ) THEN
+            CREATE TYPE notification_status_enum AS ENUM (
+                'SENT',
+                'READ',
+                'ACTIONED',
+                'DISMISSED'
+                );
+        END IF;
+    END $$;
+
+CREATE TABLE IF NOT EXISTS user_notifications (
+                                                  notification_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+
+                                                  user_id UUID NOT NULL,
+
+                                                  notification_type notification_type_enum NOT NULL,
+
+                                                  notification_message TEXT NOT NULL,
+
+                                                  notification_descriptive TEXT NOT NULL,
+
+                                                  notification_local_url TEXT DEFAULT NULL,
+
+                                                  status notification_status_enum NOT NULL DEFAULT 'SENT',
+
+                                                  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+                                                  updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+                                                  CONSTRAINT chk_url_for_incomplete_activity CHECK (
+                                                      (
+                                                          notification_type = 'INCOMPLETE_ACTIVITY_REMINDER'
+                                                              AND notification_local_url IS NOT NULL
+                                                          )
+                                                          OR notification_type = 'UPCOMING_REMINDER'
+                                                      )
+);
+
+CREATE INDEX IF NOT EXISTS idx_user_notifications_user_id_status
+    ON user_notifications(user_id, status);
+
+CREATE INDEX IF NOT EXISTS idx_user_notifications_user_id_created_at
+    ON user_notifications(user_id, created_at DESC);

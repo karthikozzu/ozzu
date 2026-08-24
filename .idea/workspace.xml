@@ -5,9 +5,15 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="7e4d98bc-5cdc-4c99-8099-a19e10a9930c" name="Changes" comment="">
+      <change afterPath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/controller/UserNotificationController.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/persistence/entity/UserNotificationEntity.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/persistence/enums/NotificationStatus.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/persistence/enums/NotificationType.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/persistence/repo/UserNotificationRepository.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/service/UserNotificationService.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/controller/EventLoungesController.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/controller/EventLoungesController.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/service/EventLoungeService.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/service/EventLoungeService.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/db/dm.sql" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/resources/db/dm.sql" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/openapi/ozzu_api.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/resources/openapi/ozzu_api.yaml" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -17,8 +23,8 @@
   <component name="FileTemplateManagerImpl">
     <option name="RECENT_TEMPLATES">
       <list>
-        <option value="Enum" />
         <option value="Interface" />
+        <option value="Enum" />
         <option value="Class" />
       </list>
     </option>
@@ -159,7 +165,9 @@
       <workItem from="1776697098770" duration="20532000" />
       <workItem from="1778385529883" duration="12876000" />
       <workItem from="1781367001905" duration="24682000" />
-      <workItem from="1784472237758" duration="21013000" />
+      <workItem from="1784472237758" duration="21860000" />
+      <workItem from="1787539347283" duration="152000" />
+      <workItem from="1787539516299" duration="1399000" />
     </task>
     <servers />
   </component>

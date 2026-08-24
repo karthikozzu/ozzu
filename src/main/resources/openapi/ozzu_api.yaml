@@ -1142,7 +1142,48 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ArtifactViewResponse"
-
+  /ozzu/users/{userId}/actions/getNotifications:
+    get:
+      tags:
+        - UserNotifications
+      operationId: getNotifications
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/UUID"
+      responses:
+        "200":
+          description: User notifications
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserNotificationsResponse"
+  /ozzu/users/{userId}/actions/updateNotifications:
+    post:
+      tags:
+        - UserNotifications
+      operationId: updateNotifications
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/UUID"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateNotificationsRequest"
+      responses:
+        "200":
+          description: Notifications updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UpdateNotificationsResponse"
   /ozzu/users/{userId}/tokens/balance:
     get:
       tags: [Tokens]
@@ -2668,7 +2709,81 @@ components:
           description: Optional role (e.g., Captain, Batsman, Bowler, etc.)
         internalProperties:
           $ref: "#/components/schemas/InternalProperties"
-
+    UserNotificationsResponse:
+      type: object
+      required:
+        - notifications
+      properties:
+        notifications:
+          type: array
+          items:
+            $ref: "#/components/schemas/UserNotification"
+    UserNotification:
+      type: object
+      required:
+        - notificationId
+        - notificationType
+        - notificationMessage
+        - notificationDescriptive
+        - status
+        - createdAt
+      properties:
+        notificationId:
+          $ref: "#/components/schemas/UUID"
+        notificationType:
+          type: string
+          enum:
+            - UPCOMING_REMINDER
+            - INCOMPLETE_ACTIVITY_REMINDER
+        notificationMessage:
+          type: string
+        notificationDescriptive:
+          type: string
+        notificationLocalURL:
+          type: string
+          nullable: true
+        status:
+          type: string
+          enum:
+            - SENT
+            - READ
+            - ACTIONED
+            - DISMISSED
+        createdAt:
+          $ref: "#/components/schemas/Timestamp"
+    UpdateNotificationsRequest:
+      type: object
+      required:
+        - actions
+      properties:
+        actions:
+          type: array
+          items:
+            $ref: "#/components/schemas/NotificationUpdateAction"
+    NotificationUpdateAction:
+      type: object
+      required:
+        - notificationId
+        - status
+        - timestamp
+      properties:
+        notificationId:
+          $ref: "#/components/schemas/UUID"
+        status:
+          type: string
+          enum:
+            - READ
+            - ACTIONED
+            - DISMISSED
+        timestamp:
+          $ref: "#/components/schemas/Timestamp"
+    UpdateNotificationsResponse:
+      type: object
+      properties:
+        updatedCount:
+          type: integer
+        skippedCount:
+          type: integer
     TeamMember:
       type: object
       properties:
