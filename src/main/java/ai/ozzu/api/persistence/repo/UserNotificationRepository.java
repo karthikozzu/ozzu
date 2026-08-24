@@ -2,6 +2,7 @@ package ai.ozzu.api.persistence.repo;
 
 import ai.ozzu.api.persistence.entity.UserNotificationEntity;
 import ai.ozzu.api.persistence.enums.NotificationStatus;
+import ai.ozzu.api.persistence.enums.NotificationType;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.Collection;
@@ -19,5 +20,21 @@ public interface UserNotificationRepository extends JpaRepository<UserNotificati
     Optional<UserNotificationEntity> findByNotificationIdAndUserId(
             UUID notificationId,
             UUID userId
+    );
+
+    boolean existsByUserIdAndNotificationTypeAndSourceTypeAndSourceIdAndStatus(
+            UUID userId,
+            NotificationType notificationType,
+            String sourceType,
+            UUID sourceId,
+            NotificationStatus status
+    );
+
+    List<UserNotificationEntity> findByUserIdAndNotificationTypeAndSourceTypeAndSourceIdAndStatus(
+            UUID userId,
+            NotificationType notificationType,
+            String sourceType,
+            UUID sourceId,
+            NotificationStatus status
     );
 }

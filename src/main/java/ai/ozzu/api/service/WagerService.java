@@ -88,6 +88,8 @@ public class WagerService {
     private final WagerInLoungeRepository wagerInLoungeRepo;
     private final LoungeEntryRepository loungeEntryRepository;
 
+    private final UserNotificationService userNotificationService;
+
     public WagerService(
             EventRepository eventRepo,
             WagerRepository wagerRepo,
@@ -104,7 +106,8 @@ public class WagerService {
             TokenLedgerService tokenLedgerService,
             ObjectMapper objectMapper,
             WagerInLoungeRepository wagerInLoungeRepo,
-            LoungeEntryRepository loungeEntryRepository
+            LoungeEntryRepository loungeEntryRepository,
+            UserNotificationService userNotificationService
     ) {
         this.eventRepo = eventRepo;
         this.wagerRepo = wagerRepo;
@@ -122,6 +125,7 @@ public class WagerService {
         this.objectMapper = objectMapper;
         this.wagerInLoungeRepo = wagerInLoungeRepo;
         this.loungeEntryRepository = loungeEntryRepository;
+        this.userNotificationService = userNotificationService;
     }
 
     @Transactional
@@ -247,7 +251,7 @@ public class WagerService {
             wager = wagerRepo.saveAndFlush(wager);
 
             linkExistingLoungeEntriesToWager(wager);
-
+            syncWagerNotification(userId, domainId, eventId, wager, event);
             log.info(
                     "wager.create.success domainId={} eventId={} wagerId={} userId={} stakeTokens={} customizationStatus={} status={}",
                     domainId,
@@ -1324,5 +1328,81 @@ public class WagerService {
             String nextCursor,
             boolean hasMore
     ) {
+    }
+
+    private void syncWagerNotification(
+            UUID userId,
+            UUID domainId,
+            UUID eventId,
+            WagerEntity wager,
+            EventEntity event
+    ) {
+        if (userId == null
+                || domainId == null
+                || eventId == null
+                || wager == null
+                || wager.getId() == null) {
+            return;
+        }
+
+        String eventName = resolveEventDisplayName(event);
+
+        if (CUSTOMIZATION_INCOMPLETE.equals(wager.getCustomizationStatus())) {
+            userNotificationService.createIncompleteWagerNotification(
+                    userId,
+                    domainId,
+                    eventId,
+                    wager.getId(),
+                    eventName
+            );
+
+            log.info(
+                    "wager.notification.incomplete.created userId={} domainId={} eventId={} wagerId={}",
+                    userId,
+                    domainId,
+                    eventId,
+                    wager.getId()
+            );
+
+            return;
+        }
+
+        if (CUSTOMIZATION_COMPLETE.equals(wager.getCustomizationStatus())) {
+            userNotificationService.actionIncompleteWagerNotification(
+                    userId,
+                    wager.getId()
+            );
+
+            log.info(
+                    "wager.notification.incomplete.actioned userId={} domainId={} eventId={} wagerId={}",
+                    userId,
+                    domainId,
+                    eventId,
+                    wager.getId()
+            );
+        }
+    }
+
+    private String resolveEventDisplayName(EventEntity event) {
+        if (event == null) {
+            return "this event";
+        }
+
+        /*
+         * Change this method depending on your EventEntity fields.
+         *
+         * If your EventEntity has getName(), keep this.
+         * If it has getTitle(), getDisplayName(), or getEventName(), replace below.
+         */
+        try {
+            Object name = event.getClass().getMethod("getName").invoke(event);
+
+            if (name != null && !name.toString().isBlank()) {
+                return name.toString();
+            }
+        } catch (Exception ignored) {
+        }
+
+        return "this event";
     }
 }

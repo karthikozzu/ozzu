@@ -1708,6 +1708,13 @@ CREATE TABLE IF NOT EXISTS user_notifications (
 
                                                   user_id UUID NOT NULL,
 
+                                                  domain_id UUID,
+                                                  event_id UUID,
+                                                  wager_id UUID,
+
+                                                  source_type VARCHAR(64),
+                                                  source_id UUID,
+
                                                   notification_type notification_type_enum NOT NULL,
 
                                                   notification_message TEXT NOT NULL,
@@ -1736,3 +1743,7 @@ CREATE INDEX IF NOT EXISTS idx_user_notifications_user_id_status
 
 CREATE INDEX IF NOT EXISTS idx_user_notifications_user_id_created_at
     ON user_notifications(user_id, created_at DESC);
+
+CREATE UNIQUE INDEX IF NOT EXISTS ux_user_notifications_active_source
+    ON user_notifications(user_id, notification_type, source_type, source_id)
+    WHERE status = 'SENT';

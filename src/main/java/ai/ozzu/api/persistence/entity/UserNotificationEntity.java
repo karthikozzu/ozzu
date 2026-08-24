@@ -27,6 +27,21 @@ public class UserNotificationEntity {
     @Column(name = "user_id", nullable = false)
     private UUID userId;
 
+    @Column(name = "domain_id")
+    private UUID domainId;
+
+    @Column(name = "event_id")
+    private UUID eventId;
+
+    @Column(name = "wager_id")
+    private UUID wagerId;
+
+    @Column(name = "source_type")
+    private String sourceType;
+
+    @Column(name = "source_id")
+    private UUID sourceId;
+
     @Enumerated(EnumType.STRING)
     @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     @Column(name = "notification_type", nullable = false, columnDefinition = "notification_type_enum")
@@ -68,7 +83,9 @@ public class UserNotificationEntity {
             createdAt = now;
         }
 
-        updatedAt = now;
+        if (updatedAt == null) {
+            updatedAt = now;
+        }
     }
 
     @PreUpdate
@@ -90,6 +107,46 @@ public class UserNotificationEntity {
 
     public void setUserId(UUID userId) {
         this.userId = userId;
+    }
+
+    public UUID getDomainId() {
+        return domainId;
+    }
+
+    public void setDomainId(UUID domainId) {
+        this.domainId = domainId;
+    }
+
+    public UUID getEventId() {
+        return eventId;
+    }
+
+    public void setEventId(UUID eventId) {
+        this.eventId = eventId;
+    }
+
+    public UUID getWagerId() {
+        return wagerId;
+    }
+
+    public void setWagerId(UUID wagerId) {
+        this.wagerId = wagerId;
+    }
+
+    public String getSourceType() {
+        return sourceType;
+    }
+
+    public void setSourceType(String sourceType) {
+        this.sourceType = sourceType;
+    }
+
+    public UUID getSourceId() {
+        return sourceId;
+    }
+
+    public void setSourceId(UUID sourceId) {
+        this.sourceId = sourceId;
     }
 
     public NotificationType getNotificationType() {

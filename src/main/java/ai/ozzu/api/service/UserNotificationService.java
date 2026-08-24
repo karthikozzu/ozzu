@@ -25,6 +25,8 @@ public class UserNotificationService {
 
     private static final Logger log = LoggerFactory.getLogger(UserNotificationService.class);
 
+    private static final String SOURCE_TYPE_WAGER = "WAGER";
+
     private final UserNotificationRepository userNotificationRepository;
 
     public UserNotificationService(UserNotificationRepository userNotificationRepository) {
@@ -33,6 +35,10 @@ public class UserNotificationService {
 
     @Transactional(readOnly = true)
     public UserNotificationsResponse getNotifications(UUID userId) {
+        if (userId == null) {
+            throw new BadRequestException("userId is required");
+        }
+
         List<UserNotificationEntity> entities =
                 userNotificationRepository.findByUserIdAndStatusInOrderByCreatedAtDesc(
                         userId,
@@ -55,6 +61,10 @@ public class UserNotificationService {
             UUID userId,
             UpdateNotificationsRequest request
     ) {
+        if (userId == null) {
+            throw new BadRequestException("userId is required");
+        }
+
         if (request == null || request.getActions() == null) {
             throw new BadRequestException("actions is required");
         }
@@ -80,7 +90,7 @@ public class UserNotificationService {
                 throw new BadRequestException("timestamp is required for every action");
             }
 
-            NotificationStatus newStatus = toEntityStatus(action.getStatus());
+            NotificationStatus newStatus = NotificationStatus.valueOf(action.getStatus().name());
 
             UserNotificationEntity entity = userNotificationRepository
                     .findByNotificationIdAndUserId(action.getNotificationId(), userId)
@@ -96,10 +106,6 @@ public class UserNotificationService {
                 continue;
             }
 
-            /*
-             * Offline idempotency safeguard:
-             * Do not allow an older cached client update to overwrite a newer server state.
-             */
             OffsetDateTime clientTimestamp = action.getTimestamp();
 
             if (entity.getUpdatedAt() != null && clientTimestamp.isBefore(entity.getUpdatedAt())) {
@@ -118,7 +124,6 @@ public class UserNotificationService {
             entity.setUpdatedAt(clientTimestamp);
 
             userNotificationRepository.save(entity);
-
             updatedCount++;
 
             log.info(
@@ -137,45 +142,158 @@ public class UserNotificationService {
     }
 
     @Transactional
-    public UserNotificationEntity createNotification(
+    public void createIncompleteWagerNotification(
             UUID userId,
-            NotificationType notificationType,
-            String message,
-            String descriptive,
-            String localUrl
+            UUID domainId,
+            UUID eventId,
+            UUID wagerId,
+            String eventName
     ) {
         if (userId == null) {
             throw new BadRequestException("userId is required");
         }
 
-        if (notificationType == null) {
-            throw new BadRequestException("notificationType is required");
+        if (domainId == null) {
+            throw new BadRequestException("domainId is required");
         }
 
-        if (message == null || message.isBlank()) {
-            throw new BadRequestException("notificationMessage is required");
+        if (eventId == null) {
+            throw new BadRequestException("eventId is required");
         }
 
-        if (descriptive == null || descriptive.isBlank()) {
-            throw new BadRequestException("notificationDescriptive is required");
+        if (wagerId == null) {
+            throw new BadRequestException("wagerId is required");
         }
 
-        if (notificationType == NotificationType.INCOMPLETE_ACTIVITY_REMINDER
-                && (localUrl == null || localUrl.isBlank())) {
-            throw new BadRequestException(
-                    "notificationLocalURL is required for INCOMPLETE_ACTIVITY_REMINDER"
+        String safeEventName =
+                eventName != null && !eventName.isBlank()
+                        ? eventName
+                        : "this event";
+
+        boolean alreadyExists =
+                userNotificationRepository.existsByUserIdAndNotificationTypeAndSourceTypeAndSourceIdAndStatus(
+                        userId,
+                        NotificationType.INCOMPLETE_ACTIVITY_REMINDER,
+                        SOURCE_TYPE_WAGER,
+                        wagerId,
+                        NotificationStatus.SENT
+                );
+
+        if (alreadyExists) {
+            log.info(
+                    "notification.incompleteWager.exists userId={} domainId={} eventId={} wagerId={}",
+                    userId,
+                    domainId,
+                    eventId,
+                    wagerId
             );
+            return;
         }
+
+        String localUrl = "/events/" + eventId + "/wagers/" + wagerId;
 
         UserNotificationEntity entity = new UserNotificationEntity();
         entity.setUserId(userId);
-        entity.setNotificationType(notificationType);
-        entity.setNotificationMessage(message);
-        entity.setNotificationDescriptive(descriptive);
+        entity.setDomainId(domainId);
+        entity.setEventId(eventId);
+        entity.setWagerId(wagerId);
+        entity.setSourceType(SOURCE_TYPE_WAGER);
+        entity.setSourceId(wagerId);
+        entity.setNotificationType(NotificationType.INCOMPLETE_ACTIVITY_REMINDER);
+        entity.setNotificationMessage("Complete your wager");
+        entity.setNotificationDescriptive(
+                "You started a wager for " + safeEventName + " but did not finish all selections."
+        );
         entity.setNotificationLocalUrl(localUrl);
         entity.setStatus(NotificationStatus.SENT);
 
-        return userNotificationRepository.save(entity);
+        userNotificationRepository.save(entity);
+
+        log.info(
+                "notification.incompleteWager.created userId={} domainId={} eventId={} wagerId={}",
+                userId,
+                domainId,
+                eventId,
+                wagerId
+        );
+    }
+
+    @Transactional
+    public void actionIncompleteWagerNotification(
+            UUID userId,
+            UUID wagerId
+    ) {
+        if (userId == null || wagerId == null) {
+            return;
+        }
+
+        List<UserNotificationEntity> notifications =
+                userNotificationRepository.findByUserIdAndNotificationTypeAndSourceTypeAndSourceIdAndStatus(
+                        userId,
+                        NotificationType.INCOMPLETE_ACTIVITY_REMINDER,
+                        SOURCE_TYPE_WAGER,
+                        wagerId,
+                        NotificationStatus.SENT
+                );
+
+        if (notifications == null || notifications.isEmpty()) {
+            return;
+        }
+
+        OffsetDateTime now = OffsetDateTime.now();
+
+        for (UserNotificationEntity notification : notifications) {
+            notification.setStatus(NotificationStatus.ACTIONED);
+            notification.setUpdatedAt(now);
+        }
+
+        userNotificationRepository.saveAll(notifications);
+
+        log.info(
+                "notification.incompleteWager.actioned userId={} wagerId={} count={}",
+                userId,
+                wagerId,
+                notifications.size()
+        );
+    }
+
+    @Transactional
+    public void dismissIncompleteWagerNotification(
+            UUID userId,
+            UUID wagerId
+    ) {
+        if (userId == null || wagerId == null) {
+            return;
+        }
+
+        List<UserNotificationEntity> notifications =
+                userNotificationRepository.findByUserIdAndNotificationTypeAndSourceTypeAndSourceIdAndStatus(
+                        userId,
+                        NotificationType.INCOMPLETE_ACTIVITY_REMINDER,
+                        SOURCE_TYPE_WAGER,
+                        wagerId,
+                        NotificationStatus.SENT
+                );
+
+        if (notifications == null || notifications.isEmpty()) {
+            return;
+        }
+
+        OffsetDateTime now = OffsetDateTime.now();
+
+        for (UserNotificationEntity notification : notifications) {
+            notification.setStatus(NotificationStatus.DISMISSED);
+            notification.setUpdatedAt(now);
+        }
+
+        userNotificationRepository.saveAll(notifications);
+
+        log.info(
+                "notification.incompleteWager.dismissed userId={} wagerId={} count={}",
+                userId,
+                wagerId,
+                notifications.size()
+        );
     }
 
     private UserNotification toApi(UserNotificationEntity entity) {
@@ -202,13 +320,5 @@ public class UserNotificationService {
         api.setCreatedAt(entity.getCreatedAt());
 
         return api;
-    }
-
-    private NotificationStatus toEntityStatus(NotificationUpdateAction.StatusEnum status) {
-        if (status == null) {
-            throw new BadRequestException("status is required");
-        }
-
-        return NotificationStatus.valueOf(status.name());
     }
 }
