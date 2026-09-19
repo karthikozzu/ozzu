@@ -1,9 +1,9 @@
 package ai.ozzu.api.service;
 
+import ai.ozzu.api.exceptions.BadRequestException;
 import ai.ozzu.api.exceptions.EntityAlreadyExistsException;
 import ai.ozzu.api.exceptions.EntityNotFoundException;
 import ai.ozzu.api.exceptions.MissingFieldException;
-import ai.ozzu.api.generated.model.Domain;
 import ai.ozzu.api.generated.model.Lounge;
 import ai.ozzu.api.generated.model.LoungeCreateRequest;
 import ai.ozzu.api.persistence.entity.DomainEntity;
@@ -21,8 +21,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import javax.swing.text.html.Option;
 import java.time.OffsetDateTime;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -52,55 +52,57 @@ public class LoungeService {
 
     public Lounge getLounge(UUID domainId, UUID loungeId) {
         Optional<LoungeEntity> loungeEntityOptional = loungeRepository.findById(loungeId);
-        if(loungeEntityOptional.isEmpty()) {
-            throw new EntityNotFoundException("Lounge not found:"+loungeId);
+
+        if (loungeEntityOptional.isEmpty()) {
+            throw new EntityNotFoundException("Lounge not found:" + loungeId);
         }
-        if(! loungeEntityOptional.get().getDomain().getId().equals(domainId)) {
+
+        LoungeEntity lounge = loungeEntityOptional.get();
+
+        if (lounge.getDomain() == null || !lounge.getDomain().getId().equals(domainId)) {
             throw new EntityNotFoundException("Domain ID not matching with Lounge");
         }
-        return toApi(loungeEntityOptional.get());
+
+        return toApi(lounge);
     }
 
     @Transactional(readOnly = true)
     public List<Lounge> listMyLounges(UUID domainId, UUID userId) {
-
         log.info("lounges.listMyLounges domainId={} userId={}", domainId, userId);
 
         ensureDomainExists(domainId);
-
         ensureUserExists(userId);
 
         List<LoungeMembershipEntity> memberships =
-
                 loungeMembershipRepository.findMyLoungesByStatuses(
-
                         userId,
-
                         domainId,
-
                         LoungeMemberStatus.INVITED.name(),
-
                         LoungeMemberStatus.ACTIVE.name()
-
                 );
 
         List<Lounge> result = memberships.stream()
-
                 .map(m -> toApi(m.getLounge()))
-
                 .toList();
 
-        log.info("lounges.listMyLounges.result domainId={} userId={} count={}",
-
-                domainId, userId, result.size());
+        log.info(
+                "lounges.listMyLounges.result domainId={} userId={} count={}",
+                domainId,
+                userId,
+                result.size()
+        );
 
         return result;
-
     }
 
     @Transactional
     public Lounge createLounge(UUID domainId, UUID ownerUserId, LoungeCreateRequest req) {
-        log.info("lounges.create.start domainId={} ownerUserId={} request={}", domainId, ownerUserId, req);
+        log.info(
+                "lounges.create.start domainId={} ownerUserId={} request={}",
+                domainId,
+                ownerUserId,
+                req
+        );
 
         DomainEntity domain = domainRepository.findById(domainId)
                 .orElseThrow(() -> {
@@ -115,7 +117,11 @@ public class LoungeService {
                 });
 
         if (req == null || req.getName() == null || req.getName().isBlank()) {
-            log.warn("lounges.create.missingName domainId={} ownerUserId={}", domainId, ownerUserId);
+            log.warn(
+                    "lounges.create.missingName domainId={} ownerUserId={}",
+                    domainId,
+                    ownerUserId
+            );
             throw new MissingFieldException("Lounge name is required");
         }
 
@@ -127,16 +133,18 @@ public class LoungeService {
                     throw new EntityAlreadyExistsException("Lounge already exists in domain: " + name);
                 });
 
+        Map<String, Object> internalProperties =
+                normalizeLoungeInternalProperties(req.getInternalProperties());
+
         LoungeEntity lounge = new LoungeEntity();
         lounge.setDomain(domain);
         lounge.setName(name);
         lounge.setDescription(req.getDescription());
         lounge.setOwnerUser(owner);
-        lounge.setInternalProperties(req.getInternalProperties() != null ? req.getInternalProperties() : Map.of());
+        lounge.setInternalProperties(internalProperties);
 
         LoungeEntity saved = loungeRepository.save(lounge);
 
-        // Owner membership: OWNER + JOINED
         LoungeMembershipEntity membership = new LoungeMembershipEntity();
         membership.setLounge(saved);
         membership.setUser(owner);
@@ -145,10 +153,17 @@ public class LoungeService {
         membership.setInvitedByUser(owner);
         membership.setJoinedAt(OffsetDateTime.now());
         membership.setInternalProperties(Map.of());
+
         loungeMembershipRepository.save(membership);
 
-        log.info("lounges.create.success domainId={} loungeId={} ownerUserId={} name={}",
-                domainId, saved.getId(), ownerUserId, saved.getName());
+        log.info(
+                "lounges.create.success domainId={} loungeId={} ownerUserId={} name={} prizeMoney={}",
+                domainId,
+                saved.getId(),
+                ownerUserId,
+                saved.getName(),
+                internalProperties.get("prizeMoney")
+        );
 
         return toApi(saved);
     }
@@ -168,8 +183,8 @@ public class LoungeService {
     }
 
     private Lounge toApi(LoungeEntity e) {
-        // NOTE: adjust fields to match your generated model exactly
         Lounge api = new Lounge();
+
         api.setId(e.getId());
         api.setDomainId(e.getDomain() != null ? e.getDomain().getId() : null);
         api.setName(e.getName());
@@ -180,7 +195,52 @@ public class LoungeService {
         api.setImageUrl(e.getImageUrl());
         api.setVideoUrl(e.getVideoUrl());
         api.setThumbnailUrl(e.getThumbnailUrl());
-        api.setInternalProperties(e.getInternalProperties());
+
+        api.setInternalProperties(
+                normalizeLoungeInternalProperties(e.getInternalProperties())
+        );
+
         return api;
+    }
+
+    private Map<String, Object> normalizeLoungeInternalProperties(
+            Map<String, Object> internalProperties
+    ) {
+        Map<String, Object> props = new HashMap<>();
+
+        if (internalProperties != null && !internalProperties.isEmpty()) {
+            props.putAll(internalProperties);
+        }
+
+        /*
+         * Base lounge default/fallback prize metadata.
+         * Event-specific prizes should live in event_lounges.internalProperties.
+         */
+        props.putIfAbsent("prizeMoney", 0);
+        props.putIfAbsent("prizes", List.of());
+
+        Object prizeMoney = props.get("prizeMoney");
+
+        if (prizeMoney == null) {
+            props.put("prizeMoney", 0);
+        } else if (prizeMoney instanceof Number) {
+            props.put("prizeMoney", prizeMoney);
+        } else {
+            try {
+                props.put("prizeMoney", Integer.parseInt(prizeMoney.toString()));
+            } catch (Exception ex) {
+                throw new BadRequestException("internalProperties.prizeMoney must be a number");
+            }
+        }
+
+        Object prizes = props.get("prizes");
+
+        if (prizes == null) {
+            props.put("prizes", List.of());
+        } else if (!(prizes instanceof List<?>)) {
+            throw new BadRequestException("internalProperties.prizes must be an array");
+        }
+
+        return props;
     }
 }

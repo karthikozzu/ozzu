@@ -35,7 +35,14 @@ import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Base64;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Objects;
+import java.util.UUID;
 
 @Service
 public class EventsService {
@@ -47,15 +54,16 @@ public class EventsService {
     private final SeriesRepository seriesRepository;
     private final EventParticipantRepository eventParticipantRepository;
     private final WagerRepository wagerRepository;
-
     private final MediaService mediaService;
 
-    public EventsService(EventRepository eventRepository,
-                         DomainRepository domainRepository,
-                         SeriesRepository seriesRepository,
-                         EventParticipantRepository eventParticipantRepository,
-                         WagerRepository wagerRepository,
-                         MediaService mediaService) {
+    public EventsService(
+            EventRepository eventRepository,
+            DomainRepository domainRepository,
+            SeriesRepository seriesRepository,
+            EventParticipantRepository eventParticipantRepository,
+            WagerRepository wagerRepository,
+            MediaService mediaService
+    ) {
         this.eventRepository = eventRepository;
         this.domainRepository = domainRepository;
         this.seriesRepository = seriesRepository;
@@ -80,11 +88,18 @@ public class EventsService {
         }
 
         SeriesEntity series = null;
+
         if (req.getSeriesId() != null) {
             series = seriesRepository.findByIdAndDomain_Id(req.getSeriesId(), domainId)
                     .orElseThrow(() -> {
-                        log.error("createEvent: Series not found in domain: {} {}", domainId, req.getSeriesId());
-                        return new EntityNotFoundException("Series not found in domain: " + req.getSeriesId());
+                        log.error(
+                                "createEvent: Series not found in domain: {} {}",
+                                domainId,
+                                req.getSeriesId()
+                        );
+                        return new EntityNotFoundException(
+                                "Series not found in domain: " + req.getSeriesId()
+                        );
                     });
         }
 
@@ -95,10 +110,15 @@ public class EventsService {
         e.setDescription(req.getDescription());
         e.setTimeEventStart(req.getTimeEventStart());
         e.setTimeEventEnd(req.getTimeEventEnd());
-        e.setInternalProperties(req.getInternalProperties() != null ? req.getInternalProperties() : Map.of());
+        e.setInternalProperties(
+                req.getInternalProperties() != null
+                        ? req.getInternalProperties()
+                        : Map.of()
+        );
 
         if (req.getInternalProperties() != null && req.getInternalProperties().containsKey("status")) {
             Object rawStatus = req.getInternalProperties().get("status");
+
             if (rawStatus instanceof String statusStr && !statusStr.isBlank()) {
                 try {
                     EventStatus st = EventStatus.valueOf(statusStr.toUpperCase(Locale.ROOT));
@@ -110,12 +130,14 @@ public class EventsService {
                 }
             }
         }
-        if(req.getImage() != null) {
+
+        if (req.getImage() != null) {
             String url;
+
             try {
                 url = mediaService.uploadImage(
                         req.getImage().getContentAsByteArray(),
-                        e.getName()+".jpg",
+                        e.getName() + ".jpg",
                         "image/jpeg",
                         "EVENT_PHOTO",
                         e.getId()
@@ -123,34 +145,51 @@ public class EventsService {
             } catch (IOException ex) {
                 throw new BadRequestException(ex.getMessage());
             }
+
             e.setEventImageUrl(url);
+            e.setImageUrl(url);
+            e.setThumbnailUrl(url);
         }
+
         EventEntity saved = eventRepository.save(e);
+
         log.info("createEvent: created eventId={} name={}", saved.getId(), saved.getName());
+
         return toApi(saved);
     }
 
     @Transactional(readOnly = true)
-    public EventListResponse listEvents(UUID domainId,
-                                        UUID seriesId,
-                                        UUID teamId,
-                                        LocalDate fromDate,
-                                        LocalDate toDate,
-                                        String statusStr,
-                                        Integer limit,
-                                        String cursor) {
-
-        log.info("listEvents: domainId={}, seriesId={}, teamId={}, fromDate={}, toDate={}, status={}, limit={}, cursor={}",
-                domainId, seriesId, teamId, fromDate, toDate, statusStr, limit, cursor);
+    public EventListResponse listEvents(
+            UUID domainId,
+            UUID seriesId,
+            UUID teamId,
+            LocalDate fromDate,
+            LocalDate toDate,
+            String statusStr,
+            Integer limit,
+            String cursor
+    ) {
+        log.info(
+                "listEvents: domainId={}, seriesId={}, teamId={}, fromDate={}, toDate={}, status={}, limit={}, cursor={}",
+                domainId,
+                seriesId,
+                teamId,
+                fromDate,
+                toDate,
+                statusStr,
+                limit,
+                cursor
+        );
 
         if (!domainRepository.existsById(domainId)) {
             log.error("listEvents: Domain not found: {}", domainId);
             throw new EntityNotFoundException("Domain not found: " + domainId);
         }
 
-        int pageSize = (limit == null) ? 20 : Math.max(1, Math.min(100, limit));
+        int pageSize = limit == null ? 20 : Math.max(1, Math.min(100, limit));
 
         EventStatus status = null;
+
         if (statusStr != null && !statusStr.isBlank()) {
             try {
                 status = EventStatus.valueOf(statusStr.trim().toUpperCase(Locale.ROOT));
@@ -159,11 +198,11 @@ public class EventsService {
             }
         }
 
-        OffsetDateTime fromTs = (fromDate == null)
+        OffsetDateTime fromTs = fromDate == null
                 ? null
                 : fromDate.atStartOfDay().atOffset(ZoneOffset.UTC);
 
-        OffsetDateTime toTs = (toDate == null)
+        OffsetDateTime toTs = toDate == null
                 ? null
                 : toDate.plusDays(1).atStartOfDay().atOffset(ZoneOffset.UTC);
 
@@ -202,6 +241,7 @@ public class EventsService {
         var pageable = PageRequest.of(0, pageSize + 1, sort);
 
         var page = eventRepository.findAll(spec, pageable);
+
         List<EventEntity> rows = page.getContent();
 
         boolean hasMore = rows.size() > pageSize;
@@ -265,7 +305,10 @@ public class EventsService {
                         li.setParticipantType(LineupEntry.ParticipantTypeEnum.TEAM);
                         li.setParticipantId(ep.getTeam().getId());
                     } else {
-                        log.warn("getEventPage: participant {} has neither player nor team", ep.getId());
+                        log.warn(
+                                "getEventPage: participant {} has neither player nor team",
+                                ep.getId()
+                        );
                         return null;
                     }
 
@@ -286,8 +329,11 @@ public class EventsService {
             page.setMyWagerSummary(mySummary);
         }
 
-        log.info("getEventPage: built page for eventId={} with {} lineup entries",
-                eventId, lineup.size());
+        log.info(
+                "getEventPage: built page for eventId={} with {} lineup entries",
+                eventId,
+                lineup.size()
+        );
 
         return page;
     }
@@ -309,16 +355,28 @@ public class EventsService {
     }
 
     private void fill(Event api, EventEntity e) {
+        Map<String, Object> props = e.getInternalProperties() != null
+                ? e.getInternalProperties()
+                : Map.of();
+
         api.setId(e.getId());
         api.setDomainId(e.getDomain() != null ? e.getDomain().getId() : null);
 
         api.setSeriesId(e.getSeries() != null ? e.getSeries().getId() : null);
         api.setSeriesName(e.getSeries() != null ? e.getSeries().getName() : null);
 
+        if (e.getStatus() != null) {
+            api.setStatus(ai.ozzu.api.generated.model.EventStatus.valueOf(e.getStatus().name()));
+        }
+
         api.setName(e.getName());
         api.setDescription(e.getDescription());
 
-        api.setEventImageUrl(e.getEventImageUrl() != null ? URI.create(e.getEventImageUrl()) : null);
+        api.setImageUrl(e.getImageUrl());
+        api.setVideoUrl(e.getVideoUrl());
+        api.setThumbnailUrl(e.getThumbnailUrl());
+
+        api.setEventImageUrl(toUriOrNull(e.getEventImageUrl()));
         api.setEventLocation(e.getLocation());
         api.setVenue(e.getVenue());
 
@@ -330,51 +388,59 @@ public class EventsService {
         api.setIsSpotlight(e.isSpotlight());
 
         api.setObjectStatus(e.getStatus() != null ? e.getStatus().name() : null);
-        api.setImageUrl(e.getImageUrl());
-        api.setVideoUrl(e.getVideoUrl());
-        api.setThumbnailUrl(e.getThumbnailUrl());
+
         api.setTimeCreated(e.getCreatedAt());
         api.setTimeUpdated(e.getUpdatedAt());
-        api.setInternalProperties(e.getInternalProperties());
-        api.setEventImageUrl(URI.create(e.getEventImageUrl()));
+
+        api.setInternalProperties(props);
         api.setTeams(mapTeams(e));
-        api.setScoreSummary(mapScoreSummary(e.getInternalProperties()));
+        api.setScoreSummary(mapScoreSummary(props));
     }
 
     private void fill(EventPageResponse api, EventEntity e) {
+        Map<String, Object> props = e.getInternalProperties() != null
+                ? e.getInternalProperties()
+                : Map.of();
+
         api.setId(e.getId());
         api.setDomainId(e.getDomain() != null ? e.getDomain().getId() : null);
 
         api.setSeriesId(e.getSeries() != null ? e.getSeries().getId() : null);
         api.setSeriesName(e.getSeries() != null ? e.getSeries().getName() : null);
 
+        if (e.getStatus() != null) {
+            api.setStatus(ai.ozzu.api.generated.model.EventStatus.valueOf(e.getStatus().name()));
+        }
+
         api.setName(e.getName());
         api.setDescription(e.getDescription());
 
-        api.setEventImageUrl(e.getEventImageUrl() != null ? URI.create(e.getEventImageUrl()) : null);
+        api.setImageUrl(e.getImageUrl());
+        api.setVideoUrl(e.getVideoUrl());
+        api.setThumbnailUrl(e.getThumbnailUrl());
+
+        api.setEventImageUrl(toUriOrNull(e.getEventImageUrl()));
         api.setEventLocation(e.getLocation());
         api.setVenue(e.getVenue());
 
         api.setTimeEventStart(e.getTimeEventStart());
         api.setTimeEventEnd(e.getTimeEventEnd());
+
         api.setIsEventCanceled(e.isCanceled());
         api.setIsEventCompleted(e.isCompleted());
         api.setIsSpotlight(e.isSpotlight());
-        api.setImageUrl(e.getImageUrl());
-        api.setVideoUrl(e.getVideoUrl());
-        api.setThumbnailUrl(e.getThumbnailUrl());
+
         api.setObjectStatus(e.getStatus() != null ? e.getStatus().name() : null);
-        api.setEventImageUrl(URI.create(e.getEventImageUrl()));
+
         api.setTimeCreated(e.getCreatedAt());
         api.setTimeUpdated(e.getUpdatedAt());
-        api.setInternalProperties(e.getInternalProperties());
 
+        api.setInternalProperties(props);
         api.setTeams(mapTeams(e));
-        api.setScoreSummary(mapScoreSummary(e.getInternalProperties()));
+        api.setScoreSummary(mapScoreSummary(props));
     }
 
     private List<EventTeam> mapTeams(EventEntity event) {
-
         List<EventTeam> teams = new ArrayList<>();
 
         if (event.getTeamA() != null) {
@@ -389,19 +455,19 @@ public class EventsService {
     }
 
     private EventTeam mapTeam(TeamEntity team, EventEntity event, String teamKey) {
-
         EventTeam dto = new EventTeam();
 
         dto.setId(team.getId());
         dto.setDomainId(team.getDomain() != null ? team.getDomain().getId() : null);
         dto.setSeriesId(team.getSeries() != null ? team.getSeries().getId() : null);
         dto.setName(team.getName());
+        //dto.setDescription(team.getDescription());
 
-        if (team.getTeamPhotoUrl() != null) {
-            dto.setTeamImageUrl(URI.create(team.getTeamPhotoUrl()));
+        if (team.getTeamPhotoUrl() != null && !team.getTeamPhotoUrl().isBlank()) {
+            dto.setTeamImageUrl(toUriOrNull(team.getTeamPhotoUrl()));
         } else if (team.getInternalProperties() != null) {
             Object logoUrl = team.getInternalProperties().get("logoUrl");
-            dto.setTeamImageUrl(logoUrl != null ? URI.create(String.valueOf(logoUrl)) : null);
+            dto.setTeamImageUrl(logoUrl != null ? toUriOrNull(String.valueOf(logoUrl)) : null);
         }
 
         dto.setScore(getScoreDisplay(event.getInternalProperties(), teamKey));
@@ -409,22 +475,41 @@ public class EventsService {
         return dto;
     }
 
-    private record CursorParts(OffsetDateTime cursorTime, UUID cursorId) {}
+    private record CursorParts(OffsetDateTime cursorTime, UUID cursorId) {
+    }
 
     private String encodeCursor(OffsetDateTime time, UUID id) {
-        if (time == null || id == null) return null;
-        String raw = time.toString() + "|" + id;
-        return Base64.getUrlEncoder().withoutPadding().encodeToString(raw.getBytes(StandardCharsets.UTF_8));
+        if (time == null || id == null) {
+            return null;
+        }
+
+        String raw = time + "|" + id;
+
+        return Base64.getUrlEncoder()
+                .withoutPadding()
+                .encodeToString(raw.getBytes(StandardCharsets.UTF_8));
     }
 
     private CursorParts decodeCursor(String cursor) {
-        if (cursor == null || cursor.isBlank()) return new CursorParts(null, null);
+        if (cursor == null || cursor.isBlank()) {
+            return new CursorParts(null, null);
+        }
+
         try {
-            String raw = new String(Base64.getUrlDecoder().decode(cursor), StandardCharsets.UTF_8);
+            String raw = new String(
+                    Base64.getUrlDecoder().decode(cursor),
+                    StandardCharsets.UTF_8
+            );
+
             String[] parts = raw.split("\\|");
-            if (parts.length != 2) return new CursorParts(null, null);
+
+            if (parts.length != 2) {
+                return new CursorParts(null, null);
+            }
+
             OffsetDateTime t = OffsetDateTime.parse(parts[0]);
             UUID id = UUID.fromString(parts[1]);
+
             return new CursorParts(t, id);
         } catch (Exception ex) {
             log.warn("decodeCursor: invalid cursor '{}', treating as empty", cursor);
@@ -433,12 +518,18 @@ public class EventsService {
     }
 
     private ScoreSummary mapScoreSummary(Map<String, Object> props) {
-
-        if (props == null) {
+        if (props == null || props.isEmpty()) {
             return null;
         }
 
         Object scoreSummaryObj = props.get("scoreSummary");
+
+        /*
+         * Ganesh's sample uses top-level internalProperties.score.
+         */
+        if (scoreSummaryObj == null) {
+            scoreSummaryObj = props.get("score");
+        }
 
         if (!(scoreSummaryObj instanceof Map<?, ?> scoreSummaryMap)) {
             return null;
@@ -459,13 +550,13 @@ public class EventsService {
 
             InningsScore score = new InningsScore();
 
-            score.setTeam(asString(inningMap.get("team")));
-            score.setInningNumber(asInteger(inningMap.get("inningNumber")));
-            score.setRuns(asInteger(inningMap.get("runs")));
-            score.setWickets(asInteger(inningMap.get("wickets")));
-            score.setOvers(asDouble(inningMap.get("overs")));
-            score.setRunRate(asDouble(inningMap.get("runRate")));
-            score.setIsCompleted(asBoolean(inningMap.get("isCompleted")));
+            score.setTeam(firstString(inningMap, "team", "team_id", "teamId"));
+            score.setInningNumber(firstInteger(inningMap, "inningNumber", "innings_number", "inningsNumber"));
+            score.setRuns(firstInteger(inningMap, "runs"));
+            score.setWickets(firstInteger(inningMap, "wickets"));
+            score.setOvers(firstDouble(inningMap, "overs"));
+            score.setRunRate(firstDouble(inningMap, "runRate", "run_rate"));
+            score.setIsCompleted(firstBoolean(inningMap, "isCompleted", "is_complete"));
 
             innings.add(score);
         }
@@ -477,7 +568,6 @@ public class EventsService {
     }
 
     private String getScoreDisplay(Map<String, Object> props, String teamKey) {
-
         if (props == null) {
             return null;
         }
@@ -500,28 +590,27 @@ public class EventsService {
     }
 
     private Map<String, Object> extractEventScores(EventEntity e) {
-
         if (e == null || e.getInternalProperties() == null) {
             return null;
         }
 
         Object eventScoresObj = e.getInternalProperties().get("eventScores");
 
-        if (eventScoresObj instanceof Map<?, ?> map) {
-            Map<String, Object> result = new HashMap<>();
-
-            for (Map.Entry<?, ?> entry : map.entrySet()) {
-                if (entry.getKey() != null) {
-                    result.put(String.valueOf(entry.getKey()), entry.getValue());
-                }
-            }
-
-            return result;
+        /*
+         * Ganesh's detailed score sample uses top-level internalProperties.scoreDetails.
+         */
+        if (eventScoresObj == null) {
+            eventScoresObj = e.getInternalProperties().get("scoreDetails");
         }
 
-        Object oldScorecardObj = e.getInternalProperties().get("scorecard");
+        /*
+         * Older fallback.
+         */
+        if (eventScoresObj == null) {
+            eventScoresObj = e.getInternalProperties().get("scorecard");
+        }
 
-        if (oldScorecardObj instanceof Map<?, ?> map) {
+        if (eventScoresObj instanceof Map<?, ?> map) {
             Map<String, Object> result = new HashMap<>();
 
             for (Map.Entry<?, ?> entry : map.entrySet()) {
@@ -536,8 +625,87 @@ public class EventsService {
         return null;
     }
 
-    private String asString(Object value) {
-        return value != null ? String.valueOf(value) : null;
+    private URI toUriOrNull(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+
+        try {
+            return URI.create(value);
+        } catch (Exception ex) {
+            log.warn("events.invalidUri value={} error={}", value, ex.toString());
+            return null;
+        }
+    }
+
+    private String firstString(Map<?, ?> map, String... keys) {
+        if (map == null) {
+            return null;
+        }
+
+        for (String key : keys) {
+            Object value = map.get(key);
+
+            if (value != null && !value.toString().isBlank()) {
+                return value.toString();
+            }
+        }
+
+        return null;
+    }
+
+    private Integer firstInteger(Map<?, ?> map, String... keys) {
+        if (map == null) {
+            return null;
+        }
+
+        for (String key : keys) {
+            Object value = map.get(key);
+
+            if (value == null) {
+                continue;
+            }
+
+            return asInteger(value);
+        }
+
+        return null;
+    }
+
+    private Double firstDouble(Map<?, ?> map, String... keys) {
+        if (map == null) {
+            return null;
+        }
+
+        for (String key : keys) {
+            Object value = map.get(key);
+
+            if (value == null) {
+                continue;
+            }
+
+            return asDouble(value);
+        }
+
+        return null;
+    }
+
+    private Boolean firstBoolean(Map<?, ?> map, String... keys) {
+        if (map == null) {
+            return null;
+        }
+
+        for (String key : keys) {
+            Object value = map.get(key);
+
+            if (value == null) {
+                continue;
+            }
+
+            return asBoolean(value);
+        }
+
+        return null;
     }
 
     private Integer asInteger(Object value) {
@@ -545,15 +713,20 @@ public class EventsService {
             return null;
         }
 
-        if (value instanceof Integer i) {
-            return i;
-        }
+        try {
+            if (value instanceof Integer i) {
+                return i;
+            }
 
-        if (value instanceof Number n) {
-            return n.intValue();
-        }
+            if (value instanceof Number n) {
+                return n.intValue();
+            }
 
-        return Integer.valueOf(String.valueOf(value));
+            return Integer.valueOf(String.valueOf(value));
+        } catch (Exception ex) {
+            log.warn("events.invalidInteger value={} error={}", value, ex.toString());
+            return null;
+        }
     }
 
     private Double asDouble(Object value) {
@@ -561,15 +734,20 @@ public class EventsService {
             return null;
         }
 
-        if (value instanceof Double d) {
-            return d;
-        }
+        try {
+            if (value instanceof Double d) {
+                return d;
+            }
 
-        if (value instanceof Number n) {
-            return n.doubleValue();
-        }
+            if (value instanceof Number n) {
+                return n.doubleValue();
+            }
 
-        return Double.valueOf(String.valueOf(value));
+            return Double.valueOf(String.valueOf(value));
+        } catch (Exception ex) {
+            log.warn("events.invalidDouble value={} error={}", value, ex.toString());
+            return null;
+        }
     }
 
     private Boolean asBoolean(Object value) {

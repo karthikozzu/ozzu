@@ -12,4 +12,14 @@ public interface EventLoungeRepository extends JpaRepository<EventLoungeEntity, 
   List<EventLoungeEntity> findByLounge_Id(UUID loungeId);
   Optional<EventLoungeEntity> findByIdAndDomain_IdAndEvent_Id(UUID id, UUID domainId, UUID eventId);
 
+  List<EventLoungeEntity> findByDomain_IdAndEvent_IdOrderByCreatedAtAsc(
+          UUID domainId,
+          UUID eventId
+  );
+
+  Optional<EventLoungeEntity> findByEvent_IdAndLounge_Id(
+          UUID eventId,
+          UUID loungeId
+  );
+
 }
