@@ -28,6 +28,10 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
+import static ai.ozzu.api.utils.StringUtils.DEFAULT_EVENT_IMAGE_URL;
+import static ai.ozzu.api.utils.StringUtils.DEFAULT_EVENT_LOUNGE_IMAGE_URL;
+import static ai.ozzu.api.utils.StringUtils.defaultIfBlank;
+
 @Service
 public class LoungeService {
 
@@ -192,9 +196,9 @@ public class LoungeService {
         api.setOwnerUserId(e.getOwnerUser() != null ? e.getOwnerUser().getId() : null);
         api.setTimeCreated(e.getCreatedAt());
         api.setTimeUpdated(e.getUpdatedAt());
-        api.setImageUrl(e.getImageUrl());
-        api.setVideoUrl(e.getVideoUrl());
-        api.setThumbnailUrl(e.getThumbnailUrl());
+        api.setImageUrl(defaultIfBlank(e.getImageUrl(), DEFAULT_EVENT_LOUNGE_IMAGE_URL));
+        api.setVideoUrl(defaultIfBlank(e.getImageUrl(), DEFAULT_EVENT_LOUNGE_IMAGE_URL));
+        api.setThumbnailUrl(defaultIfBlank(e.getImageUrl(), DEFAULT_EVENT_LOUNGE_IMAGE_URL));
 
         api.setInternalProperties(
                 normalizeLoungeInternalProperties(e.getInternalProperties())

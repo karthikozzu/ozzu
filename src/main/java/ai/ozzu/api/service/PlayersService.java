@@ -18,6 +18,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+import static ai.ozzu.api.utils.StringUtils.DEFAULT_PLAYER_IMAGE_URL;
+import static ai.ozzu.api.utils.StringUtils.DEFAULT_TEAM_IMAGE_URL;
+import static ai.ozzu.api.utils.StringUtils.defaultIfBlank;
+
 @Service
 public class PlayersService {
 
@@ -123,9 +127,12 @@ public class PlayersService {
         p.setTimeCreated(e.getCreatedAt());
         p.setTimeUpdated(e.getUpdatedAt());
         p.setInternalProperties(e.getInternalProperties());
-        p.setImageUrl(e.getImageUrl());
-        p.setVideoUrl(e.getVideoUrl());
-        p.setThumbnailUrl(e.getThumbnailUrl());
+        p.setImageUrl(defaultIfBlank(e.getImageUrl(),
+                DEFAULT_PLAYER_IMAGE_URL));
+        p.setVideoUrl(defaultIfBlank(e.getImageUrl(),
+                DEFAULT_PLAYER_IMAGE_URL));
+        p.setThumbnailUrl(defaultIfBlank(e.getImageUrl(),
+                DEFAULT_PLAYER_IMAGE_URL));
         return p;
     }
 }

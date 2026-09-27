@@ -25,6 +25,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+import static ai.ozzu.api.utils.StringUtils.DEFAULT_EVENT_LOUNGE_IMAGE_URL;
+import static ai.ozzu.api.utils.StringUtils.defaultIfBlank;
+
 @Service
 public class EventLoungeService {
 
@@ -183,17 +186,20 @@ public class EventLoungeService {
 
         api.setImageUrl(firstNonBlank(
                 entity.getImageUrl(),
-                entity.getLounge() != null ? entity.getLounge().getImageUrl() : null
+                entity.getLounge() != null ? entity.getLounge().getImageUrl() : defaultIfBlank(entity.getImageUrl(),
+                        DEFAULT_EVENT_LOUNGE_IMAGE_URL)
         ));
 
         api.setVideoUrl(firstNonBlank(
                 entity.getVideoUrl(),
-                entity.getLounge() != null ? entity.getLounge().getVideoUrl() : null
+                entity.getLounge() != null ? entity.getLounge().getVideoUrl() : defaultIfBlank(entity.getImageUrl(),
+                        DEFAULT_EVENT_LOUNGE_IMAGE_URL)
         ));
 
         api.setThumbnailUrl(firstNonBlank(
                 entity.getThumbnailUrl(),
-                entity.getLounge() != null ? entity.getLounge().getThumbnailUrl() : null
+                entity.getLounge() != null ? entity.getLounge().getThumbnailUrl() : defaultIfBlank(entity.getImageUrl(),
+                        DEFAULT_EVENT_LOUNGE_IMAGE_URL)
         ));
 
         Map<String, Object> props = normalizeEventLoungeInternalProperties(

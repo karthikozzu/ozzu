@@ -22,6 +22,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+import static ai.ozzu.api.utils.StringUtils.DEFAULT_EVENT_LOUNGE_IMAGE_URL;
+import static ai.ozzu.api.utils.StringUtils.DEFAULT_TEAM_IMAGE_URL;
+import static ai.ozzu.api.utils.StringUtils.defaultIfBlank;
+
 @Service
 public class TeamsService {
 
@@ -174,9 +178,12 @@ public class TeamsService {
         t.setDomainId(e.getDomain() != null ? e.getDomain().getId() : null);
         t.setSeriesId(e.getSeries() != null ? e.getSeries().getId() : null);
         t.setName(e.getName());
-        t.setImageUrl(e.getTeamPhotoUrl());
-        t.setVideoUrl(e.getVideoUrl());
-        t.setThumbnailUrl(e.getThumbnailUrl());
+        t.setImageUrl(defaultIfBlank(e.getImageUrl(),
+                DEFAULT_TEAM_IMAGE_URL));
+        t.setVideoUrl(defaultIfBlank(e.getImageUrl(),
+                DEFAULT_TEAM_IMAGE_URL));
+        t.setThumbnailUrl(defaultIfBlank(e.getImageUrl(),
+                DEFAULT_TEAM_IMAGE_URL));
         t.setTimeCreated(e.getCreatedAt());
         t.setTimeUpdated(e.getUpdatedAt());
         t.setInternalProperties(e.getInternalProperties());
