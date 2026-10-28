@@ -24,6 +24,7 @@ import ai.ozzu.api.persistence.entity.WagerCardTypeEntity;
 import ai.ozzu.api.persistence.entity.WagerEntity;
 import ai.ozzu.api.persistence.entity.WagerInLoungeEntity;
 import ai.ozzu.api.persistence.enums.EventStatus;
+import ai.ozzu.api.persistence.enums.TokenTxnType;
 import ai.ozzu.api.persistence.enums.WagerStatus;
 import ai.ozzu.api.persistence.repo.ConceptTermRepository;
 import ai.ozzu.api.persistence.repo.DomainRepository;
@@ -32,6 +33,7 @@ import ai.ozzu.api.persistence.repo.LoungeEntryRepository;
 import ai.ozzu.api.persistence.repo.PlayerRepository;
 import ai.ozzu.api.persistence.repo.ScopedReferentRepository;
 import ai.ozzu.api.persistence.repo.TeamRepository;
+import ai.ozzu.api.persistence.repo.TokenLedgerRepository;
 import ai.ozzu.api.persistence.repo.UserRepository;
 import ai.ozzu.api.persistence.repo.WagerCardBindingRepository;
 import ai.ozzu.api.persistence.repo.WagerCardRepository;
@@ -41,14 +43,17 @@ import ai.ozzu.api.persistence.repo.WagerInLoungeRepository;
 import ai.ozzu.api.persistence.repo.WagerRepository;
 import ai.ozzu.api.utils.CursorHelper;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.openapitools.jackson.nullable.JsonNullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
@@ -84,6 +89,8 @@ public class WagerService {
     private final UserRepository userRepo;
     private final DomainRepository domainRepo;
     private final TokenLedgerService tokenLedgerService;
+
+    private final TokenLedgerRepository tokenLedgerRepository;
     private final ObjectMapper objectMapper;
     private final WagerInLoungeRepository wagerInLoungeRepo;
     private final LoungeEntryRepository loungeEntryRepository;
@@ -107,7 +114,8 @@ public class WagerService {
             ObjectMapper objectMapper,
             WagerInLoungeRepository wagerInLoungeRepo,
             LoungeEntryRepository loungeEntryRepository,
-            UserNotificationService userNotificationService
+            UserNotificationService userNotificationService,
+            TokenLedgerRepository tokenLedgerRepository
     ) {
         this.eventRepo = eventRepo;
         this.wagerRepo = wagerRepo;
@@ -126,6 +134,7 @@ public class WagerService {
         this.wagerInLoungeRepo = wagerInLoungeRepo;
         this.loungeEntryRepository = loungeEntryRepository;
         this.userNotificationService = userNotificationService;
+        this.tokenLedgerRepository = tokenLedgerRepository;
     }
 
     @Transactional
@@ -159,8 +168,12 @@ public class WagerService {
                 req.getWagerCards() != null ? req.getWagerCards().size() : 0
         );
 
-        EventEntity event = eventRepo.findByIdAndDomainId(eventId, domainId)
+        // Lock event before any wager write; event LIVE transitions must use this lock too.
+        EventEntity event = eventRepo.lockById(eventId)
                 .orElseThrow(() -> new IllegalArgumentException("Invalid event/domain"));
+        if (eventRepo.findByIdAndDomainId(eventId, domainId).isEmpty()) {
+            throw new IllegalArgumentException("Invalid event/domain");
+        }
 
         if (event.getStatus() != EventStatus.SCHEDULED) {
             throw new BadRequestException(
@@ -182,7 +195,8 @@ public class WagerService {
             throw new BadRequestException("stakeTokens must be greater than or equal to 0");
         }
 
-        WagerEntity wager = wagerRepo.findByUserIdAndEventId(userId, eventId)
+        WagerEntity wager = wagerRepo
+                .findByUserIdAndEventIdAndDeletedFalse(userId, eventId)
                 .orElseGet(WagerEntity::new);
 
         boolean existingWager = wager.getId() != null;
@@ -198,7 +212,10 @@ public class WagerService {
                     wager.getCustomizationStatus()
             );
 
-            if (wager.getStatus() == WagerStatus.LOCKED
+            // A PLACED wager has already been charged. Do not mutate its
+            // stake/cards without a dedicated atomic stake-adjustment flow.
+            if (wager.getStatus() == WagerStatus.PLACED
+                    || wager.getStatus() == WagerStatus.LOCKED
                     || wager.getStatus() == WagerStatus.CANCELED
                     || wager.getStatus() == WagerStatus.SETTLED) {
                 throw new BadRequestException(
@@ -232,7 +249,9 @@ public class WagerService {
 
         try {
             if (CUSTOMIZATION_COMPLETE.equals(customizationStatus)) {
-                tokenLedgerService.debitStakeOnce(user, domain, event, wager, stake, idemKey);
+                // Stable per-wager debit key, independent of client retries.
+                tokenLedgerService.debitStakeOnce(user, domain, event, wager, stake,
+                        "WAGER_STAKE:" + wager.getEventId() + ":" + wager.getId());
 
                 WagerStatus oldStatus = wager.getStatus();
 
@@ -794,9 +813,9 @@ public class WagerService {
                 }
             } else {
                 if (userId == null) {
-                    entityPage = wagerRepo.findByDomainIdOrderByCreatedAtDesc(domainId, pageable);
+                    entityPage = wagerRepo.findByDomainIdAndDeletedFalseOrderByCreatedAtDesc(domainId, pageable);
                 } else {
-                    entityPage = wagerRepo.findByDomainIdAndUserIdOrderByCreatedAtDesc(
+                    entityPage = wagerRepo.findByDomainIdAndUserIdAndDeletedFalseOrderByCreatedAtDesc(
                             domainId,
                             userId,
                             pageable
@@ -828,9 +847,9 @@ public class WagerService {
             }
 
             return new PageResult<>(wagers, nextCursor, hasMore);
-        } catch (Exception e) {
-            log.error(e.getMessage(), e);
-            throw new BadRequestException(e.getMessage());
+        } catch (RuntimeException e) {
+            log.error("Failed to fetch wagers for domainId={}", domainId, e);
+            throw e;
         }
     }
 
@@ -893,6 +912,11 @@ public class WagerService {
         }
 
         for (LoungeEntryEntity loungeEntry : loungeEntries) {
+
+            if (loungeEntry.getLeftAt() != null) {
+                continue;
+            }
+
             if (loungeEntry.getEventLounge() == null) {
                 continue;
             }
@@ -900,7 +924,10 @@ public class WagerService {
             UUID eventLoungeId = loungeEntry.getEventLounge().getId();
 
             boolean alreadyLinked = wagerInLoungeRepo
-                    .findByEventLounge_IdAndWager_Id(eventLoungeId, wager.getId())
+                    .findByEventLounge_IdAndWager_Id(
+                            eventLoungeId,
+                            wager.getId()
+                    )
                     .isPresent();
 
             if (alreadyLinked) {
@@ -990,7 +1017,9 @@ public class WagerService {
         api.setTimeCreated(w.getCreatedAt());
         api.setTimeUpdated(w.getUpdatedAt());
         api.setInternalProperties(jsonStringToMap(w.getInternalProperties()));
-
+        api.setIsDeleted(w.isDeleted());
+        api.setDeletedAt(JsonNullable.of(w.getDeletedAt()));
+        api.setCanceledAt(JsonNullable.of(w.getCanceledAt()));
         return api;
     }
 
@@ -1404,5 +1433,194 @@ public class WagerService {
         }
 
         return "this event";
+    }
+
+    private WagerEntity getOwnedWagerForUpdate(UUID wagerId, UUID userId) {
+        // Unlocked lookup to resolve the partition/event key.
+        List<WagerEntity> matches = wagerRepo.findAllByWagerId(wagerId);
+        if (matches.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Wager not found");
+        }
+        if (matches.size() != 1) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Ambiguous wager ID");
+        }
+        WagerEntity candidate = matches.get(0);
+        if (!candidate.getUserId().equals(userId)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Not your wager");
+        }
+        // Consistent order: event -> wager -> ledger.
+        eventRepo.lockById(candidate.getEventId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Event not found"));
+        WagerEntity locked = wagerRepo.lockByEventIdAndId(candidate.getEventId(), wagerId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Wager not found"));
+        if (!locked.getUserId().equals(userId)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Not your wager");
+        }
+        return locked;
+    }
+
+    private void refundOutstandingStake(WagerEntity wager) {
+
+        if (wager.getStatus() != WagerStatus.PLACED) {
+            return;
+        }
+
+        long net = tokenLedgerRepository.getNetStakeDebits(
+                wager.getEventId(),
+                wager.getId(),
+                List.of(
+                        TokenTxnType.WAGER_STAKE_DEBIT,
+                        TokenTxnType.WAGER_REFUND_CREDIT
+                )
+        );
+
+        if (net > 0) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "Invalid wager stake ledger balance"
+            );
+        }
+
+        if (net == 0) {
+            return;
+        }
+
+        long refundable = Math.negateExact(net);
+
+        if (refundable > Integer.MAX_VALUE) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "Refund amount exceeds supported limit"
+            );
+        }
+
+        String refundKey = "WAGER_REFUND:"
+                + wager.getEventId()
+                + ":"
+                + wager.getId();
+
+        tokenLedgerService.creditRefundOnce(
+                wager.getUserId(),
+                wager.getDomainId(),
+                wager.getEventId(),
+                wager.getId(),
+                (int) refundable,
+                refundKey
+        );
+    }
+
+    @Transactional
+    public void discardWager(UUID wagerId) {
+
+        UUID userId = currentUserId();
+
+        WagerEntity wager =
+                getOwnedWagerForUpdate(wagerId, userId);
+
+        // Idempotent repeated deletion.
+        if (wager.isDeleted()) {
+            return;
+        }
+
+        EventEntity event = eventRepo
+                .findById(wager.getEventId())
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND,
+                        "Event not found"
+                ));
+
+        if (event.getStatus() != EventStatus.SCHEDULED) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "Wager cannot be deleted after event starts"
+            );
+        }
+
+        if (wager.getStatus() == WagerStatus.LOCKED
+                || wager.getStatus() == WagerStatus.SETTLED) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "Locked or settled wagers cannot be deleted"
+            );
+        }
+
+        refundOutstandingStake(wager);
+
+        OffsetDateTime now = OffsetDateTime.now();
+
+        wager.setDeleted(true);
+        wager.setDeletedAt(now);
+        wager.setUpdatedAt(now);
+
+        wagerRepo.saveAndFlush(wager);
+
+        log.info(
+                "wager.discard.success wagerId={} userId={} eventId={}",
+                wagerId,
+                userId,
+                wager.getEventId()
+        );
+    }
+
+    @Transactional
+    public Wager cancelWager(UUID wagerId) {
+
+        UUID userId = currentUserId();
+
+        WagerEntity wager =
+                getOwnedWagerForUpdate(wagerId, userId);
+
+        if (wager.isDeleted()) {
+            throw new ResponseStatusException(
+                    HttpStatus.NOT_FOUND,
+                    "Wager not found"
+            );
+        }
+
+        if (wager.getStatus() == WagerStatus.CANCELED) {
+            return toApiModelWithCards(wager);
+        }
+
+        EventEntity event = eventRepo
+                .findById(wager.getEventId())
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND,
+                        "Event not found"
+                ));
+
+        if (event.getStatus() != EventStatus.SCHEDULED) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "Wager cannot be canceled after event starts"
+            );
+        }
+
+        if (wager.getStatus() == WagerStatus.LOCKED
+                || wager.getStatus() == WagerStatus.SETTLED
+                || !WagerStatus.canTransition(wager.getStatus(), WagerStatus.CANCELED)) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "Invalid wager status transition"
+            );
+        }
+
+        refundOutstandingStake(wager);
+
+        OffsetDateTime now = OffsetDateTime.now();
+
+        wager.setStatus(WagerStatus.CANCELED);
+        wager.setCanceledAt(now);
+        wager.setUpdatedAt(now);
+
+        wager = wagerRepo.saveAndFlush(wager);
+
+        log.info(
+                "wager.cancel.success wagerId={} userId={} eventId={}",
+                wagerId,
+                userId,
+                wager.getEventId()
+        );
+
+        return toApiModelWithCards(wager);
     }
 }

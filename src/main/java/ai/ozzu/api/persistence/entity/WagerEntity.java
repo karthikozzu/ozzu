@@ -93,6 +93,15 @@ public class WagerEntity {
     @Column(name = "updated_at", nullable = false)
     private OffsetDateTime updatedAt;
 
+    @Column(name = "is_deleted", nullable = false)
+    private boolean deleted = false;
+
+    @Column(name = "deleted_at")
+    private OffsetDateTime deletedAt;
+
+    @Column(name = "canceled_at")
+    private OffsetDateTime canceledAt;
+
     @PrePersist
     void prePersist() {
         if (this.id == null) {
@@ -221,6 +230,30 @@ public class WagerEntity {
 
     public void setInternalProperties(String internalProperties) {
         this.internalProperties = internalProperties == null || internalProperties.isBlank() ? "{}" : internalProperties;
+    }
+
+    public boolean isDeleted() {
+        return deleted;
+    }
+
+    public void setDeleted(boolean deleted) {
+        this.deleted = deleted;
+    }
+
+    public OffsetDateTime getDeletedAt() {
+        return deletedAt;
+    }
+
+    public void setDeletedAt(OffsetDateTime deletedAt) {
+        this.deletedAt = deletedAt;
+    }
+
+    public OffsetDateTime getCanceledAt() {
+        return canceledAt;
+    }
+
+    public void setCanceledAt(OffsetDateTime canceledAt) {
+        this.canceledAt = canceledAt;
     }
 
     public boolean isCelebrity() {

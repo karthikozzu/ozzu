@@ -2,7 +2,9 @@ package ai.ozzu.api.persistence.repo;
 
 import ai.ozzu.api.persistence.entity.WagerEntity;
 import ai.ozzu.api.persistence.enums.WagerStatus;
+
 import jakarta.persistence.LockModeType;
+
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
@@ -15,7 +17,12 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
-public interface WagerRepository extends JpaRepository<WagerEntity, UUID> {
+public interface WagerRepository
+        extends JpaRepository<WagerEntity, WagerEntity.WagerPk> {
+
+    // ============================================================
+    // PROJECTIONS
+    // ============================================================
 
     interface EventUserCountRow {
         UUID getEventId();
@@ -27,44 +34,118 @@ public interface WagerRepository extends JpaRepository<WagerEntity, UUID> {
         Long getPotAmount();
     }
 
-    List<WagerEntity> findByUserIdOrderByCreatedAtDesc(UUID userId);
+    // ============================================================
+    // BASIC WAGER QUERIES
+    // Exclude soft-deleted wagers.
+    // CANCELED wagers remain visible.
+    // ============================================================
 
-    List<WagerEntity> findByEventId(UUID eventId);
+    List<WagerEntity> findByUserIdAndDeletedFalseOrderByCreatedAtDesc(
+            UUID userId
+    );
 
-    List<WagerEntity> findByDomainId(UUID domainId);
+    List<WagerEntity> findByEventIdAndDeletedFalse(
+            UUID eventId
+    );
 
-    List<WagerEntity> findByDomainIdAndStatusOrderByCreatedAtDesc(
+    List<WagerEntity> findByDomainIdAndDeletedFalse(
+            UUID domainId
+    );
+
+    List<WagerEntity> findByDomainIdAndStatusAndDeletedFalseOrderByCreatedAtDesc(
             UUID domainId,
             WagerStatus status
     );
 
-    Optional<WagerEntity> findByEventIdAndId(UUID eventId, UUID id);
+    // ============================================================
+    // LOOKUP BY COMPOSITE KEY
+    // ============================================================
 
-    Optional<WagerEntity> findByUserIdAndEventId(UUID userId, UUID eventId);
+    Optional<WagerEntity> findByEventIdAndId(
+            UUID eventId,
+            UUID id
+    );
 
-    boolean existsByUserIdAndEventId(UUID userId, UUID eventId);
+    Optional<WagerEntity> findByEventIdAndIdAndDeletedFalse(
+            UUID eventId,
+            UUID id
+    );
+
+    // ============================================================
+    // USER + EVENT LOOKUPS
+    // Only non-deleted wagers participate in active uniqueness.
+    // ============================================================
+
+    Optional<WagerEntity> findByUserIdAndEventIdAndDeletedFalse(
+            UUID userId,
+            UUID eventId
+    );
+
+    boolean existsByUserIdAndEventIdAndDeletedFalse(
+            UUID userId,
+            UUID eventId
+    );
+
+    // ============================================================
+    // LOOKUP BY WAGER UUID
+    //
+    // The DB primary key is (event_id, id).
+    // UUID alone is not guaranteed unique by the DB.
+    // Return List so the service can reject ambiguous matches.
+    // ============================================================
+
+    @Query("""
+            SELECT w
+            FROM WagerEntity w
+            WHERE w.id = :wagerId
+            """)
+    List<WagerEntity> findAllByWagerId(
+            @Param("wagerId") UUID wagerId
+    );
+
+    // ============================================================
+    // PESSIMISTIC LOCKING
+    // ============================================================
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("""
-            select w
-            from WagerEntity w
-            where w.eventId = :eventId
-              and w.id = :wagerId
+            SELECT w
+            FROM WagerEntity w
+            WHERE w.eventId = :eventId
+              AND w.id = :wagerId
             """)
     Optional<WagerEntity> lockByEventIdAndId(
             @Param("eventId") UUID eventId,
             @Param("wagerId") UUID wagerId
     );
 
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("""
-            select w
-            from WagerEntity w
-            where w.domainId = :domainId
-              and (
+            SELECT w
+            FROM WagerEntity w
+            WHERE w.id = :wagerId
+            """)
+    List<WagerEntity> lockByWagerId(
+            @Param("wagerId") UUID wagerId
+    );
+
+    // ============================================================
+    // CURSOR PAGINATION
+    // ============================================================
+
+    @Query("""
+            SELECT w
+            FROM WagerEntity w
+            WHERE w.domainId = :domainId
+              AND w.deleted = false
+              AND (
                     w.createdAt < :cursorTime
-                    or (w.createdAt = :cursorTime and w.id < :cursorId)
+                    OR (
+                        w.createdAt = :cursorTime
+                        AND w.id < :cursorId
+                    )
                   )
-            order by w.createdAt desc, w.id desc
+            ORDER BY w.createdAt DESC, w.id DESC
             """)
     List<WagerEntity> findByDomainIdAfterCursor(
             @Param("domainId") UUID domainId,
@@ -74,15 +155,19 @@ public interface WagerRepository extends JpaRepository<WagerEntity, UUID> {
     );
 
     @Query("""
-            select w
-            from WagerEntity w
-            where w.domainId = :domainId
-              and w.userId = :userId
-              and (
+            SELECT w
+            FROM WagerEntity w
+            WHERE w.domainId = :domainId
+              AND w.userId = :userId
+              AND w.deleted = false
+              AND (
                     w.createdAt < :cursorTime
-                    or (w.createdAt = :cursorTime and w.id < :cursorId)
+                    OR (
+                        w.createdAt = :cursorTime
+                        AND w.id < :cursorId
+                    )
                   )
-            order by w.createdAt desc, w.id desc
+            ORDER BY w.createdAt DESC, w.id DESC
             """)
     List<WagerEntity> findByDomainIdAndUserIdAfterCursor(
             @Param("domainId") UUID domainId,
@@ -92,80 +177,196 @@ public interface WagerRepository extends JpaRepository<WagerEntity, UUID> {
             Pageable pageable
     );
 
-    List<WagerEntity> findByDomainIdOrderByCreatedAtDesc(
+    // ============================================================
+    // NON-CURSOR PAGINATION
+    // ============================================================
+
+    List<WagerEntity> findByDomainIdAndDeletedFalseOrderByCreatedAtDesc(
             UUID domainId,
             Pageable pageable
     );
 
-    List<WagerEntity> findByDomainIdAndUserIdOrderByCreatedAtDesc(
+    List<WagerEntity> findByDomainIdAndUserIdAndDeletedFalseOrderByCreatedAtDesc(
             UUID domainId,
             UUID userId,
             Pageable pageable
     );
 
+    // ============================================================
+    // CELEBRITY WAGERS
+    // ============================================================
+
     @Query("""
-            select w
-            from WagerEntity w
-            where w.eventId = :eventId
-              and w.isCelebrity = true
-            order by w.createdAt desc
+            SELECT w
+            FROM WagerEntity w
+            WHERE w.eventId = :eventId
+              AND w.isCelebrity = true
+              AND w.deleted = false
+            ORDER BY w.createdAt DESC
             """)
     List<WagerEntity> findCelebrityWagersByEventId(
             @Param("eventId") UUID eventId
     );
 
+    // ============================================================
+    // EVENT SUMMARY
+    //
+    // PLACED count = active PLACED wagers
+    // Total stake = active economic wagers (PLACED / LOCKED)
+    //
+    // SETTLED wagers are excluded from the live pot here.
+    // If your completed-event view needs historical pot totals,
+    // use a separate historical summary query.
+    // ============================================================
+
     @Query("""
-            select new map(
-                sum(case when w.status = :placed then 1 else 0 end) as totalPlaced,
-                coalesce(sum(w.stakeTokens), 0) as totalStake
+            SELECT new map(
+                COALESCE(
+                    SUM(
+                        CASE
+                            WHEN w.status = :placed THEN 1L
+                            ELSE 0L
+                        END
+                    ),
+                    0L
+                ) AS totalPlaced,
+
+                COALESCE(
+                    SUM(
+                        CASE
+                            WHEN w.status IN :activeStatuses
+                            THEN w.stakeTokens
+                            ELSE 0
+                        END
+                    ),
+                    0L
+                ) AS totalStake
             )
-            from WagerEntity w
-            where w.eventId = :eventId
+            FROM WagerEntity w
+            WHERE w.eventId = :eventId
+              AND w.deleted = false
             """)
-    Map<String, Object> computeSummaryForEvent(
+    Map<String, Object> computeSummaryForEventWithStatuses(
             @Param("eventId") UUID eventId,
-            @Param("placed") WagerStatus placed
+            @Param("placed") WagerStatus placed,
+            @Param("activeStatuses") List<WagerStatus> activeStatuses
     );
 
+    default Map<String, Object> computeSummaryForEvent(
+            UUID eventId,
+            WagerStatus placed
+    ) {
+        return computeSummaryForEventWithStatuses(
+                eventId,
+                placed,
+                List.of(
+                        WagerStatus.PLACED,
+                        WagerStatus.LOCKED
+                )
+        );
+    }
+
+    // ============================================================
+    // BULK PARTICIPANT COUNTS
+    //
+    // Count only wagers that represent active participation.
+    // ============================================================
+
     @Query("""
-            select w.eventId as eventId,
-                   count(distinct w.userId) as usersCount
-            from WagerEntity w
-            where w.eventId in :eventIds
-            group by w.eventId
+            SELECT w.eventId AS eventId,
+                   COUNT(DISTINCT w.userId) AS usersCount
+            FROM WagerEntity w
+            WHERE w.eventId IN :eventIds
+              AND w.deleted = false
+              AND w.status IN :statuses
+            GROUP BY w.eventId
             """)
-    List<EventUserCountRow> countUsersBulkRows(
-            @Param("eventIds") List<UUID> eventIds
+    List<EventUserCountRow> countUsersBulkRowsWithStatuses(
+            @Param("eventIds") List<UUID> eventIds,
+            @Param("statuses") List<WagerStatus> statuses
     );
 
+    default List<EventUserCountRow> countUsersBulkRows(
+            List<UUID> eventIds
+    ) {
+        if (eventIds == null || eventIds.isEmpty()) {
+            return List.of();
+        }
+
+        return countUsersBulkRowsWithStatuses(
+                eventIds,
+                List.of(
+                        WagerStatus.PLACED,
+                        WagerStatus.LOCKED
+                )
+        );
+    }
+
+    // ============================================================
+    // BULK POT AMOUNTS
+    // ============================================================
+
     @Query("""
-            select w.eventId as eventId,
-                   coalesce(sum(w.stakeTokens), 0) as potAmount
-            from WagerEntity w
-            where w.eventId in :eventIds
-            group by w.eventId
+            SELECT w.eventId AS eventId,
+                   COALESCE(SUM(w.stakeTokens), 0L) AS potAmount
+            FROM WagerEntity w
+            WHERE w.eventId IN :eventIds
+              AND w.deleted = false
+              AND w.status IN :statuses
+            GROUP BY w.eventId
             """)
-    List<EventPotRow> sumPotBulkRows(
-            @Param("eventIds") List<UUID> eventIds
+    List<EventPotRow> sumPotBulkRowsWithStatuses(
+            @Param("eventIds") List<UUID> eventIds,
+            @Param("statuses") List<WagerStatus> statuses
     );
 
+    default List<EventPotRow> sumPotBulkRows(
+            List<UUID> eventIds
+    ) {
+        if (eventIds == null || eventIds.isEmpty()) {
+            return List.of();
+        }
+
+        return sumPotBulkRowsWithStatuses(
+                eventIds,
+                List.of(
+                        WagerStatus.PLACED,
+                        WagerStatus.LOCKED
+                )
+        );
+    }
+
+    // ============================================================
+    // USER WAGERS FOR MULTIPLE EVENTS
+    // Used by Spotlight / Event summaries.
+    // CANCELED wagers remain visible.
+    // ============================================================
+
     @Query("""
-            select w
-            from WagerEntity w
-            where w.userId = :userId
-              and w.eventId in :eventIds
+            SELECT w
+            FROM WagerEntity w
+            WHERE w.userId = :userId
+              AND w.eventId IN :eventIds
+              AND w.deleted = false
             """)
     List<WagerEntity> findByUserIdAndEventIdIn(
             @Param("userId") UUID userId,
             @Param("eventIds") List<UUID> eventIds
     );
 
+    // ============================================================
+    // EVENT STATUS TRANSITION LOCKING
+    //
+    // Keep deleted wagers out of new event transitions.
+    // ============================================================
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("""
-            select w
-            from WagerEntity w
-            where w.eventId = :eventId
-              and w.status = :status
+            SELECT w
+            FROM WagerEntity w
+            WHERE w.eventId = :eventId
+              AND w.status = :status
+              AND w.deleted = false
             """)
     List<WagerEntity> lockByEventIdAndStatus(
             @Param("eventId") UUID eventId,

@@ -2,9 +2,11 @@ package ai.ozzu.api.persistence.repo;
 
 import ai.ozzu.api.persistence.entity.EventEntity;
 import ai.ozzu.api.persistence.enums.EventStatus;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -96,4 +98,14 @@ AND e.spotlight = false
 ORDER BY e.timeEventStart DESC
 """)
   List<EventEntity> findNonSpotlightEvents(@Param("domainId")UUID domainId, Pageable pageable);
+
+  @Lock(LockModeType.PESSIMISTIC_WRITE)
+  @Query("""
+    SELECT e
+    FROM EventEntity e
+    WHERE e.id = :eventId
+    """)
+  Optional<EventEntity> lockById(
+          @Param("eventId") UUID eventId
+  );
 }

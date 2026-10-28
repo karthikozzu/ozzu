@@ -29,4 +29,17 @@ public interface TokenLedgerRepository extends JpaRepository<TokenLedgerEntity, 
           String idempotencyKey
 
   );
+
+  @Query("""
+    SELECT COALESCE(SUM(t.amount), 0)
+    FROM TokenLedgerEntity t
+    WHERE t.wager.eventId = :eventId
+      AND t.wager.id = :wagerId
+      AND t.txnType IN :txnTypes
+    """)
+  long getNetStakeDebits(
+          @Param("eventId") UUID eventId,
+          @Param("wagerId") UUID wagerId,
+          @Param("txnTypes") List<TokenTxnType> txnTypes
+  );
 }

@@ -1747,3 +1747,17 @@ CREATE INDEX IF NOT EXISTS idx_user_notifications_user_id_created_at
 CREATE UNIQUE INDEX IF NOT EXISTS ux_user_notifications_active_source
     ON user_notifications(user_id, notification_type, source_type, source_id)
     WHERE status = 'SENT';
+
+ALTER TABLE wagers
+    ADD COLUMN IF NOT EXISTS is_deleted BOOLEAN NOT NULL DEFAULT FALSE;
+
+ALTER TABLE wagers
+    ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ;
+
+ALTER TABLE wagers
+    ADD COLUMN IF NOT EXISTS canceled_at TIMESTAMPTZ;
+
+
+CREATE UNIQUE INDEX uq_wagers_active_user_event
+    ON wagers (event_id, user_id)
+    WHERE is_deleted = FALSE;
