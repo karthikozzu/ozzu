@@ -136,6 +136,13 @@ public class SpotlightService {
 
         dto.setId(event.getId());
 
+        // Return the actual event lifecycle status in Spotlight.
+        dto.setStatus(
+                event.getStatus() != null
+                        ? ai.ozzu.api.generated.model.EventStatus.valueOf(event.getStatus().name())
+                        : null
+        );
+
         if (event.getDomain() != null) {
             dto.setDomainId(event.getDomain().getId());
         }

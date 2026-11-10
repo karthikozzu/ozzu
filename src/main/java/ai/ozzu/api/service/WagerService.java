@@ -189,7 +189,7 @@ public class WagerService {
                 .orElseThrow(() -> new IllegalArgumentException("Invalid domainId"));
 
         int stake = req.getStakeTokens() != null ? req.getStakeTokens() : 0;
-        String customizationStatus = resolveCustomizationStatus(req);
+        String customizationStatus = resolveCustomizationStatus(domainId, req);
 
         if (CUSTOMIZATION_COMPLETE.equals(customizationStatus) && stake < 0) {
             throw new BadRequestException("stakeTokens must be greater than or equal to 0");
@@ -328,16 +328,21 @@ public class WagerService {
             throw new BadRequestException("wagerCards is required");
         }
 
-        if (req.getWagerCards().size() > 6) {
-            throw new BadRequestException("maximum 6 wagerCards are allowed: 1 foundation/winner card + 5 custom cards");
+        if (req.getWagerCards().size() > 5) {
+            throw new BadRequestException("maximum 5 wagerCards are allowed, including 1 foundation/winner card");
         }
 
         int foundationCardCount = 0;
+        Set<UUID> cardTypeIds = new HashSet<>();
         Set<String> exactPredictionKeys = new HashSet<>();
 
         for (WagerCreateCardRequest card : req.getWagerCards()) {
             if (card == null || card.getWagerCardTypeId() == null) {
                 throw new BadRequestException("wagerCardTypeId is required for every wagerCard");
+            }
+
+            if (!cardTypeIds.add(card.getWagerCardTypeId())) {
+                throw new BadRequestException("All wagerCards must have distinct wagerCardTypeIds");
             }
 
             WagerCardTypeEntity cardType = wagerCardTypeRepo.findById(card.getWagerCardTypeId())
@@ -358,13 +363,7 @@ public class WagerService {
                     throw new BadRequestException("wagerCardTypeBindingId is required for every customized binding");
                 }
 
-                boolean hasPick =
-                        binding.getScopedReferentId() != null
-                                || binding.getPlayerId() != null
-                                || binding.getTeamId() != null
-                                || binding.getBindingValueId() != null
-                                || (binding.getValue() != null && !binding.getValue().isBlank())
-                                || hasValueInPayload(binding.getPickPayload());
+                boolean hasPick = hasCustomizationPick(binding);
 
                 if (!hasPick) {
                     throw new BadRequestException(
@@ -480,36 +479,87 @@ public class WagerService {
         return false;
     }
 
-    private String resolveCustomizationStatus(WagerCreateRequest req) {
-        if (req == null || req.getWagerCards() == null) {
+    // Package access allows direct unit tests of the completion rules.
+    String resolveCustomizationStatus(UUID domainId, WagerCreateRequest req) {
+        if (req == null || req.getWagerCards() == null
+                || req.getWagerCards().size() != 5) {
             return CUSTOMIZATION_INCOMPLETE;
         }
 
-        if (req.getWagerCards().size() < 6) {
-            return CUSTOMIZATION_INCOMPLETE;
-        }
+        int foundationCount = 0;
+        boolean allCardsComplete = true;
+        Set<UUID> cardTypeIds = new HashSet<>();
 
         for (WagerCreateCardRequest card : req.getWagerCards()) {
-            if (card.getBindings() == null || card.getBindings().isEmpty()) {
+            if (card == null || card.getWagerCardTypeId() == null
+                    || !cardTypeIds.add(card.getWagerCardTypeId())) {
                 return CUSTOMIZATION_INCOMPLETE;
             }
 
-            for (WagerCreateCardBindingRequest binding : card.getBindings()) {
-                boolean hasPick =
-                        binding.getScopedReferentId() != null
-                                || binding.getPlayerId() != null
-                                || binding.getTeamId() != null
-                                || binding.getBindingValueId() != null
-                                || (binding.getValue() != null && !binding.getValue().isBlank())
-                                || hasValueInPayload(binding.getPickPayload());
+            WagerCardTypeEntity cardType = wagerCardTypeRepo.findById(card.getWagerCardTypeId())
+                    .orElseThrow(() -> new BadRequestException(
+                            "Invalid wagerCardTypeId: " + card.getWagerCardTypeId()
+                    ));
 
-                if (!hasPick) {
-                    return CUSTOMIZATION_INCOMPLETE;
+            if (isFoundationOrWinnerCard(cardType)) {
+                foundationCount++;
+            }
+
+            // Do not short-circuit: validate submitted IDs on every card.
+            if (!CUSTOMIZATION_COMPLETE.equals(resolveCardCustomizationStatus(domainId, card))) {
+                allCardsComplete = false;
+            }
+        }
+
+        return foundationCount == 1 && allCardsComplete
+                ? CUSTOMIZATION_COMPLETE
+                : CUSTOMIZATION_INCOMPLETE;
+    }
+
+    String resolveCardCustomizationStatus(UUID domainId, WagerCreateCardRequest card) {
+        List<WagerCardTypeBindingEntity> configuredBindings = wagerCardTypeBindingRepo
+                .findByDomainIdAndWagerCardTypeId(domainId, card.getWagerCardTypeId());
+
+        Set<UUID> configuredIds = configuredBindings.stream()
+                .map(WagerCardTypeBindingEntity::getId)
+                .collect(Collectors.toSet());
+        Set<UUID> pickedIds = new HashSet<>();
+
+        if (card.getBindings() != null) {
+            for (WagerCreateCardBindingRequest binding : card.getBindings()) {
+                if (binding == null || binding.getWagerCardTypeBindingId() == null) {
+                    throw new BadRequestException(
+                            "wagerCardTypeBindingId is required for every customized binding"
+                    );
+                }
+
+                UUID bindingId = binding.getWagerCardTypeBindingId();
+                if (!configuredIds.contains(bindingId)) {
+                    throw new BadRequestException(
+                            "Binding does not belong to the requested domain/card type: " + bindingId
+                    );
+                }
+
+                if (hasCustomizationPick(binding)) {
+                    pickedIds.add(bindingId);
                 }
             }
         }
 
-        return CUSTOMIZATION_COMPLETE;
+        // Product rule: isOptional does not exempt a binding from completion.
+        // No configured bindings (or no picks) must not pass vacuously.
+        return !configuredIds.isEmpty() && pickedIds.containsAll(configuredIds)
+                ? CUSTOMIZATION_COMPLETE
+                : CUSTOMIZATION_INCOMPLETE;
+    }
+
+    private boolean hasCustomizationPick(WagerCreateCardBindingRequest binding) {
+        return binding.getScopedReferentId() != null
+                || binding.getPlayerId() != null
+                || binding.getTeamId() != null
+                || binding.getBindingValueId() != null
+                || (binding.getValue() != null && !binding.getValue().isBlank())
+                || hasValueInPayload(binding.getPickPayload());
     }
 
     private void createCardsAndBindings(
@@ -525,9 +575,7 @@ public class WagerService {
                     ));
 
             String cardCustomizationStatus =
-                    cardReq.getBindings() == null || cardReq.getBindings().isEmpty()
-                            ? CUSTOMIZATION_INCOMPLETE
-                            : CUSTOMIZATION_COMPLETE;
+                    resolveCardCustomizationStatus(domainId, cardReq);
 
             WagerCardEntity wagerCard = new WagerCardEntity();
             wagerCard.setWager(wager);

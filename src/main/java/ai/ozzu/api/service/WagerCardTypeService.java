@@ -258,7 +258,7 @@ public class WagerCardTypeService {
                 .toList();
 
         api.setBindings(bindings);
-
+        api.setMaxBindings(bindings.size());
         return api;
     }
 

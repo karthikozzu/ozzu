@@ -1655,6 +1655,8 @@ components:
             $ref: "#/components/schemas/SpotlightTeam"
         scoreSummary:
           $ref: "#/components/schemas/ScoreSummary"
+        status:
+          $ref: "#/components/schemas/EventStatus"
 
     SpotlightTeam:
       type: object
