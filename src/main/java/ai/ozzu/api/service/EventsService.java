@@ -28,6 +28,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import static ai.ozzu.api.utils.StringUtils.DEFAULT_TEAM_IMAGE_URL;
 
 import java.io.IOException;
 import java.net.URI;
@@ -374,12 +375,15 @@ public class EventsService {
 
         api.setName(e.getName());
         api.setDescription(e.getDescription());
+        String imageUrl = defaultIfBlank(
+                e.getImageUrl(),
+                defaultIfBlank(e.getEventImageUrl(), DEFAULT_EVENT_IMAGE_URL)
+        );
+        api.setImageUrl(imageUrl);
+        api.setVideoUrl(imageUrl);
+        api.setThumbnailUrl(imageUrl);
 
-        api.setImageUrl(defaultIfBlank(e.getImageUrl(), DEFAULT_EVENT_IMAGE_URL));
-        api.setVideoUrl(defaultIfBlank(e.getImageUrl(), DEFAULT_EVENT_IMAGE_URL));
-        api.setThumbnailUrl(defaultIfBlank(e.getImageUrl(), DEFAULT_EVENT_IMAGE_URL));
-
-        api.setEventImageUrl(toUriOrNull(defaultIfBlank(e.getImageUrl(), DEFAULT_EVENT_IMAGE_URL)));
+        api.setEventImageUrl(toUriOrNull(imageUrl));
         api.setEventLocation(e.getLocation());
         api.setVenue(e.getVenue());
 
@@ -417,12 +421,15 @@ public class EventsService {
 
         api.setName(e.getName());
         api.setDescription(e.getDescription());
+        String imageUrl = defaultIfBlank(
+                e.getImageUrl(),
+                defaultIfBlank(e.getEventImageUrl(), DEFAULT_EVENT_IMAGE_URL)
+        );
+        api.setImageUrl(imageUrl);
+        api.setVideoUrl(imageUrl);
+        api.setThumbnailUrl(imageUrl);
 
-        api.setImageUrl(defaultIfBlank(e.getImageUrl(), DEFAULT_EVENT_IMAGE_URL));
-        api.setVideoUrl(defaultIfBlank(e.getImageUrl(), DEFAULT_EVENT_IMAGE_URL));
-        api.setThumbnailUrl(defaultIfBlank(e.getImageUrl(), DEFAULT_EVENT_IMAGE_URL));
-
-        api.setEventImageUrl(toUriOrNull(defaultIfBlank(e.getImageUrl(), DEFAULT_EVENT_IMAGE_URL)));
+        api.setEventImageUrl(toUriOrNull(imageUrl));
         api.setEventLocation(e.getLocation());
         api.setVenue(e.getVenue());
 
@@ -466,12 +473,22 @@ public class EventsService {
         dto.setName(team.getName());
         //dto.setDescription(team.getDescription());
 
-        if (team.getTeamPhotoUrl() != null && !team.getTeamPhotoUrl().isBlank()) {
-            dto.setTeamImageUrl(toUriOrNull(team.getTeamPhotoUrl()));
-        } else if (team.getInternalProperties() != null) {
-            Object logoUrl = team.getInternalProperties().get("logoUrl");
-            dto.setTeamImageUrl(logoUrl != null ? toUriOrNull(String.valueOf(logoUrl)) : null);
+        String logoUrl = null;
+
+        if (team.getInternalProperties() != null) {
+            Object rawLogoUrl = team.getInternalProperties().get("logoUrl");
+            if (rawLogoUrl != null) {
+                logoUrl = String.valueOf(rawLogoUrl);
+            }
         }
+        String teamImageUrl = defaultIfBlank(
+                team.getTeamPhotoUrl(),
+                defaultIfBlank(
+                        team.getImageUrl(),
+                        defaultIfBlank(logoUrl, DEFAULT_TEAM_IMAGE_URL)
+                )
+        );
+        dto.setTeamImageUrl(toUriOrNull(teamImageUrl));
 
         dto.setScore(getScoreDisplay(event.getInternalProperties(), teamKey));
 

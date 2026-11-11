@@ -328,8 +328,8 @@ public class WagerService {
             throw new BadRequestException("wagerCards is required");
         }
 
-        if (req.getWagerCards().size() > 5) {
-            throw new BadRequestException("maximum 5 wagerCards are allowed, including 1 foundation/winner card");
+        if (req.getWagerCards().size() > 6) {
+            throw new BadRequestException("maximum 6 wagerCards are allowed: 1 foundation/winner card + 5 custom cards");
         }
 
         int foundationCardCount = 0;
@@ -482,7 +482,7 @@ public class WagerService {
     // Package access allows direct unit tests of the completion rules.
     String resolveCustomizationStatus(UUID domainId, WagerCreateRequest req) {
         if (req == null || req.getWagerCards() == null
-                || req.getWagerCards().size() != 5) {
+                || req.getWagerCards().size() != 6) {
             return CUSTOMIZATION_INCOMPLETE;
         }
 
@@ -546,7 +546,7 @@ public class WagerService {
             }
         }
 
-        // Product rule: isOptional does not exempt a binding from completion.
+        // All configured bindings are required; there is no optional completion path.
         // No configured bindings (or no picks) must not pass vacuously.
         return !configuredIds.isEmpty() && pickedIds.containsAll(configuredIds)
                 ? CUSTOMIZATION_COMPLETE

@@ -7,6 +7,7 @@ import ai.ozzu.api.generated.model.User;
 import ai.ozzu.api.persistence.request.UserPutRequest;
 import ai.ozzu.api.persistence.entity.UserEntity;
 import ai.ozzu.api.persistence.repo.UserRepository;
+import ai.ozzu.api.utils.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -75,6 +76,7 @@ public class UserService {
         response.setProvider(AuthProvider.valueOf(user.getProvider().name()));
         response.setTimeCreated(user.getCreatedAt());
         response.setTimeUpdated(user.getUpdatedAt());
+        response.setImageUrl(StringUtils.defaultIfBlank(user.getProfilePhotoUrl(), StringUtils.DEFAULT_PLAYER_IMAGE_URL));
         if(user.getProfilePhotoUrl() != null) {
             response.setInternalProperties(Map.of(
                     "profilePhotoUrl", user.getProfilePhotoUrl()
