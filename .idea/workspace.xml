@@ -6,9 +6,9 @@
   <component name="ChangeListManager">
     <list default="true" id="7e4d98bc-5cdc-4c99-8099-a19e10a9930c" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/service/EventsService.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/service/EventsService.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/service/UserNotificationService.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/service/UserNotificationService.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/service/UserService.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/service/UserService.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/service/WagerService.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/ai/ozzu/api/service/WagerService.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/openapi/ozzu_api.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/resources/openapi/ozzu_api.yaml" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -27,6 +27,18 @@
   <component name="Git.Settings">
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
   </component>
+  <component name="GitHubPullRequestSearchHistory"><![CDATA[{
+  "lastFilter": {
+    "state": "OPEN",
+    "assignee": "karthikozzu"
+  }
+}]]></component>
+  <component name="GithubPullRequestsUISettings"><![CDATA[{
+  "selectedUrlAndAccountId": {
+    "url": "git@github.com:karthikozzu/ozzu.git",
+    "accountId": "859e4f0f-0379-4518-a8e6-7c05a22111ec"
+  }
+}]]></component>
   <component name="JpbToolWindowState">
     <option name="isToolWindowVisible" value="false" />
   </component>
@@ -36,48 +48,108 @@
   <component name="MarkdownSettingsMigration">
     <option name="stateVersion" value="1" />
   </component>
+  <component name="NextEditCompletionFeaturesState">
+    <decayedCancelled>
+      <entry key="MS100" value="4.524066418424227E-61" />
+      <entry key="MS500" value="9.791363272225843E-13" />
+      <entry key="S2" value="0.0019627191925620847" />
+      <entry key="S5" value="0.15779881284123493" />
+      <entry key="S10" value="0.6866877990507289" />
+      <entry key="S30" value="1.8358878274431143" />
+      <entry key="S60" value="2.486016140577486" />
+      <entry key="M2" value="4.036274122607903" />
+      <entry key="M5" value="8.385304925491667" />
+      <entry key="M10" value="11.720642674255028" />
+      <entry key="M15" value="13.217937961927905" />
+      <entry key="M30" value="14.963694408699805" />
+      <entry key="H1" value="15.94263118130032" />
+      <entry key="H2" value="16.461123971874688" />
+      <entry key="H4" value="16.727963943653528" />
+      <entry key="D1" value="16.954295481748144" />
+      <entry key="W1" value="16.993461782935128" />
+    </decayedCancelled>
+    <decayedSelected>
+      <entry key="MS100" value="1.0000000142941492" />
+      <entry key="MS500" value="1.0273315629751785" />
+      <entry key="S2" value="1.5625151273452618" />
+      <entry key="S5" value="2.358487638805422" />
+      <entry key="S10" value="2.965151136057803" />
+      <entry key="S30" value="3.615178871097628" />
+      <entry key="S60" value="4.103589343121694" />
+      <entry key="M2" value="5.287866194072712" />
+      <entry key="M5" value="8.009071057313374" />
+      <entry key="M10" value="9.966305631542626" />
+      <entry key="M15" value="10.832022194917297" />
+      <entry key="M30" value="11.835383797971367" />
+      <entry key="H1" value="12.395903836514437" />
+      <entry key="H2" value="12.692286099332378" />
+      <entry key="H4" value="12.844698254329767" />
+      <entry key="D1" value="12.973913256712837" />
+      <entry key="W1" value="12.996268315732557" />
+    </decayedSelected>
+    <decayedShown>
+      <entry key="MS100" value="1.0601898403779912E-7" />
+      <entry key="MS500" value="0.049327579017834335" />
+      <entry key="S2" value="0.8042354392816585" />
+      <entry key="S5" value="1.8480751539612974" />
+      <entry key="S10" value="3.0913636085193903" />
+      <entry key="S30" value="5.155284286949017" />
+      <entry key="S60" value="6.417061981664399" />
+      <entry key="M2" value="9.221741437261489" />
+      <entry key="M5" value="16.340110882705037" />
+      <entry key="M10" value="21.655028469357795" />
+      <entry key="M15" value="24.0272636231108" />
+      <entry key="M30" value="26.786907287347333" />
+      <entry key="H1" value="28.33221941130085" />
+      <entry key="H2" value="29.150191372796964" />
+      <entry key="H4" value="29.57103718509241" />
+      <entry key="D1" value="29.927935689158314" />
+      <entry key="W1" value="29.989691036902233" />
+    </decayedShown>
+  </component>
   <component name="ProjectColorInfo">{
   &quot;associatedIndex&quot;: 4
 }</component>
   <component name="ProjectId" id="37EyhlRgyZq47ZZp8jg5K4C2D1I" />
-  <component name="ProjectLevelVcsManager" settingsEditedManually="true" />
   <component name="ProjectViewState">
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent">{
-  &quot;keyToString&quot;: {
-    &quot;Docker.Dockerfile.executor&quot;: &quot;Run&quot;,
-    &quot;Maven. [org.apache.maven.plugins:maven-archetype-plugin:RELEASE:generate].executor&quot;: &quot;Run&quot;,
-    &quot;Remote JVM Debug.Debug.executor&quot;: &quot;Debug&quot;,
-    &quot;Remote JVM Debug.Unnamed.executor&quot;: &quot;Debug&quot;,
-    &quot;RunOnceActivity.OpenProjectViewOnStart&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
-    &quot;SHARE_PROJECT_CONFIGURATION_FILES&quot;: &quot;true&quot;,
-    &quot;Spring Boot.Application.executor&quot;: &quot;Run&quot;,
-    &quot;git-widget-placeholder&quot;: &quot;main&quot;,
-    &quot;kotlin-language-version-configured&quot;: &quot;true&quot;,
-    &quot;last_opened_file_path&quot;: &quot;/Users/karthik/IdeaProjects/ozzu/src/main/resources&quot;,
-    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
-    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
-    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
-    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
-    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
-    &quot;project.structure.last.edited&quot;: &quot;Project&quot;,
-    &quot;project.structure.proportion&quot;: &quot;0.15&quot;,
-    &quot;project.structure.side.proportion&quot;: &quot;0.29655173&quot;,
-    &quot;settings.editor.selected.configurable&quot;: &quot;preferences.pluginManager&quot;,
-    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "Docker.Dockerfile.executor": "Run",
+    "Maven. [org.apache.maven.plugins:maven-archetype-plugin:RELEASE:generate].executor": "Run",
+    "Remote JVM Debug.Debug.executor": "Debug",
+    "Remote JVM Debug.Unnamed.executor": "Debug",
+    "RunOnceActivity.OpenProjectViewOnStart": "true",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "RunOnceActivity.git.unshallow": "true",
+    "RunOnceActivity.typescript.service.memoryLimit.init": "true",
+    "SHARE_PROJECT_CONFIGURATION_FILES": "true",
+    "Spring Boot.Application.executor": "Run",
+    "git-widget-placeholder": "main",
+    "kotlin-language-version-configured": "true",
+    "last_opened_file_path": "/Users/karthik/IdeaProjects/ozzu/src/main/resources",
+    "node.js.detected.package.eslint": "true",
+    "node.js.detected.package.tslint": "true",
+    "node.js.selected.package.eslint": "(autodetect)",
+    "node.js.selected.package.tslint": "(autodetect)",
+    "nodejs_package_manager_path": "npm",
+    "project.structure.last.edited": "Project",
+    "project.structure.proportion": "0.15",
+    "project.structure.side.proportion": "0.29655173",
+    "settings.editor.selected.configurable": "preferences.pluginManager",
+    "vue.rearranger.settings.migration": "true"
   },
-  &quot;keyToStringList&quot;: {
-    &quot;DatabaseDriversLRU&quot;: [
-      &quot;postgresql&quot;
+  "keyToStringList": {
+    "DatabaseDriversLRU": [
+      "postgresql"
     ],
-    &quot;com.intellij.ide.scratch.LRUPopupBuilder$1/&quot;: [
-      &quot;PostgreSQL&quot;
+    "com.intellij.ide.scratch.LRUPopupBuilder$1/": [
+      "PostgreSQL"
     ]
   }
-}</component>
+}]]></component>
   <component name="RecentsManager">
     <key name="CreateClassDialog.RecentsKey">
       <recent name="ai.ozzu.api.service" />
@@ -142,6 +214,14 @@
       </list>
     </recent_temporary>
   </component>
+  <component name="SharedIndexes">
+    <attachedChunks>
+      <set>
+        <option value="bundled-jdk-30f59d01ecdd-ac68fc9d2b05-intellij.indexing.shared.core-IU-263.7307.200" />
+        <option value="bundled-js-predefined-d6986cc7102b-56aff7b04f6f-JavaScript-IU-263.7307.200" />
+      </set>
+    </attachedChunks>
+  </component>
   <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="application-level" UseSingleDictionary="true" transferred="true" />
   <component name="TaskManager">
     <task active="true" id="Default" summary="Default task">
@@ -163,7 +243,7 @@
       <workItem from="1784472237758" duration="21860000" />
       <workItem from="1787539347283" duration="152000" />
       <workItem from="1787539516299" duration="4134000" />
-      <workItem from="1787659427831" duration="21903000" />
+      <workItem from="1787659427831" duration="22694000" />
     </task>
     <servers />
   </component>
@@ -261,7 +341,7 @@
         </line-breakpoint>
         <line-breakpoint enabled="true" type="java-line">
           <url>file://$PROJECT_DIR$/src/main/java/ai/ozzu/api/service/UserService.java</url>
-          <line>46</line>
+          <line>47</line>
           <option name="timeStamp" value="32" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="java-line">
@@ -292,7 +372,7 @@
         <line-breakpoint enabled="true" type="java-method">
           <url>file://$PROJECT_DIR$/src/main/java/ai/ozzu/api/persistence/repo/TokenLedgerRepository.java</url>
           <line>23</line>
-          <properties class="ai.ozzu.api.persistence.repo.TokenLedgerRepository" method="getBalance">
+          <properties class="ai.ozzu.api.persistence.repo.TokenLedgerRepository">
             <option name="EMULATED" value="true" />
             <option name="WATCH_EXIT" value="false" />
           </properties>

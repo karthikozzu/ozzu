@@ -310,7 +310,7 @@ public class UserNotificationService {
         api.setNotificationMessage(entity.getNotificationMessage());
         api.setNotificationDescriptive(entity.getNotificationDescriptive());
         api.setNotificationLocalURL(JsonNullable.of(entity.getNotificationLocalUrl()));
-
+        api.setWagerId(JsonNullable.of(entity.getWagerId()));
         api.setStatus(
                 entity.getStatus() != null
                         ? UserNotification.StatusEnum.valueOf(entity.getStatus().name())

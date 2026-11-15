@@ -15,6 +15,7 @@ import java.io.IOException;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
+import java.util.concurrent.ThreadLocalRandom;
 
 @Service
 public class UserService {
@@ -76,6 +77,7 @@ public class UserService {
         response.setProvider(AuthProvider.valueOf(user.getProvider().name()));
         response.setTimeCreated(user.getCreatedAt());
         response.setTimeUpdated(user.getUpdatedAt());
+        response.setPoints(ThreadLocalRandom.current().nextInt(100, 2001)); // temporary points
         response.setImageUrl(StringUtils.defaultIfBlank(user.getProfilePhotoUrl(), StringUtils.DEFAULT_PLAYER_IMAGE_URL));
         if(user.getProfilePhotoUrl() != null) {
             response.setInternalProperties(Map.of(

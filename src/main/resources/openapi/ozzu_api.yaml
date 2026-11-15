@@ -1519,6 +1519,10 @@ components:
       properties:
         id: { $ref: "#/components/schemas/UUID" }
         displayName: { type: string }
+        points:
+          type: integer
+          format: int32
+          description: user points
         provider: { $ref: "#/components/schemas/AuthProvider" }
         providerUserId: { type: string }
         timeCreated: { $ref: "#/components/schemas/Timestamp" }
@@ -2840,6 +2844,11 @@ components:
       properties:
         notificationId:
           $ref: "#/components/schemas/UUID"
+        wagerId:
+          type: string
+          format: uuid
+          nullable: true
+          description: ID of the incomplete wager associated with this notification.
         notificationType:
           type: string
           enum:
